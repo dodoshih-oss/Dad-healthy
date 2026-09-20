@@ -127,7 +127,8 @@ const CONFIG = {
       { key: "time", type: "time" },
       { key: "hospital", type: "text" },
       { key: "doctor", type: "text" },
-      // 照顧者：兩個欄位，各自都是下拉選單，都可以留白，可重複編輯
+      // 照顧者：兩個獨立欄位（列表跟編輯都各自顯示），
+      // 讓不同的人可以各自選擇哪一天來照顧爸爸
       { key: "caregiver1", type: "select", options: CAREGIVER_OPTIONS },
       { key: "caregiver2", type: "select", options: CAREGIVER_OPTIONS },
       { key: "note", type: "text" }, // 備註，保留空白
@@ -235,6 +236,14 @@ function matchesSearchFilter(category, item) {
   }
   if (filter.end && item.date && item.date > filter.end) {
     return false;
+  }
+  // 照顧者篩選：照顧者①或②只要有一個符合選擇的人，就算通過
+  if (filter.caregiver) {
+    const isCaregiver1 = item.caregiver1 === filter.caregiver;
+    const isCaregiver2 = item.caregiver2 === filter.caregiver;
+    if (!isCaregiver1 && !isCaregiver2) {
+      return false;
+    }
   }
   return true;
 }
@@ -421,18 +430,21 @@ function setupForm(category) {
 }
 
 // ---------------------------------------
-// 看診記錄的搜尋功能（依日期起迄篩選）
+// 看診記錄的搜尋功能（依日期起迄、照顧者篩選）
+// 搜尋條件是合併的：照顧者不分①②，只要符合其中一個就算通過（見 matchesSearchFilter）
+// 但表格列表本身仍然維持「照顧者①」「照顧者②」兩個獨立欄位
 // ---------------------------------------
 
 function setupVisitSearch() {
   const startInput = document.getElementById("visit-search-start");
   const endInput = document.getElementById("visit-search-end");
+  const caregiverInput = document.getElementById("visit-search-caregiver");
   const searchBtn = document.getElementById("visit-search-btn");
   const clearBtn = document.getElementById("visit-search-clear-btn");
 
   // 保護機制：如果 index.html 版本不對、找不到搜尋列的元件，
   // 就直接跳過設定，避免整個網站的程式碼中斷、其他分頁也不能用
-  if (!startInput || !endInput || !searchBtn || !clearBtn) {
+  if (!startInput || !endInput || !caregiverInput || !searchBtn || !clearBtn) {
     console.warn("找不到看診記錄的搜尋列元件，已略過搜尋功能設定。");
     return;
   }
@@ -441,6 +453,7 @@ function setupVisitSearch() {
     searchFilters.visit = {
       start: startInput.value, // 空字串代表不限制起始日
       end: endInput.value, // 空字串代表不限制結束日
+      caregiver: caregiverInput.value, // 空字串代表不限照顧者
     };
     renderList("visit");
   });
@@ -448,6 +461,7 @@ function setupVisitSearch() {
   clearBtn.addEventListener("click", () => {
     delete searchFilters.visit; // 取消篩選，顯示全部
     startInput.value = "";
+    caregiverInput.value = "";
     endInput.value = "";
     renderList("visit");
   });

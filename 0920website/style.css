@@ -230,6 +230,7 @@ th {
   border: 1px solid #ccc;
   border-radius: 4px;
   font-size: 13px;
+  margin-bottom: 2px; /* 照顧者欄位裡有兩個下拉選單，稍微隔開 */
 }
 
 footer {

@@ -61,10 +61,20 @@
     <section id="visit" class="tab-content">
       <h2>看診記錄</h2>
 
-      <!-- 搜尋區：依日期起迄篩選看診記錄 -->
+      <!-- 搜尋區：依日期起迄、照顧者篩選看診記錄 -->
       <div class="search-bar">
         <label>日期起：<input type="date" id="visit-search-start" /></label>
         <label>日期迄：<input type="date" id="visit-search-end" /></label>
+        <label>照顧者：
+          <select id="visit-search-caregiver">
+            <option value="">不限</option>
+            <option value="甄">甄</option>
+            <option value="瑤">瑤</option>
+            <option value="慈">慈</option>
+            <option value="書">書</option>
+            <option value="沛">沛</option>
+          </select>
+        </label>
         <button type="button" id="visit-search-btn">搜尋</button>
         <button type="button" id="visit-search-clear-btn">清除搜尋</button>
       </div>
