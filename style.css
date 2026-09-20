@@ -18,14 +18,52 @@ header {
   text-align: center;
 }
 
-/* 爸爸的頭像照片：圓形顯示 */
+/* 爸爸／媽媽的頭像照片：圓形顯示 */
 .avatar {
-  width: 96px;
-  height: 96px;
+  width: 76px;
+  height: 76px;
   object-fit: cover;
   border-radius: 50%;
   border: 3px solid white;
+  display: block;
+  margin: 0 auto 6px auto;
+}
+
+/* 人物切換區：點照片切換要看誰的資料 */
+.person-switcher {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
   margin-bottom: 10px;
+}
+
+.person-btn {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 12px;
+  opacity: 0.65;
+}
+
+.person-btn span {
+  display: block;
+  font-size: 13px;
+}
+
+.person-btn:hover {
+  opacity: 0.85;
+}
+
+/* 目前選中的人物 */
+.person-btn.active {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.15);
+}
+
+.person-btn.active .avatar {
+  border-color: #ffe08a;
 }
 
 header h1 {
@@ -76,10 +114,30 @@ header .sub {
   color: white;
 }
 
+/* 「代墊款」跟金錢有關，選中時改用跟整體綠色系搭配的暗紅色，一眼就能跟其他頁簽分開 */
+.tab-btn[data-tab="advance"] {
+  border-color: #8c3a3a;
+  color: #8c3a3a;
+}
+
+.tab-btn[data-tab="advance"]:hover {
+  background-color: #f6e9e9;
+}
+
+.tab-btn[data-tab="advance"].active {
+  background-color: #8c3a3a;
+  color: white;
+}
+
 main {
   max-width: 900px;
   margin: 20px auto;
   padding: 0 16px;
+}
+
+/* 檢查排程的「日期」欄位，如果有起訖日就上下兩行呈現 */
+.date-range div {
+  white-space: nowrap;
 }
 
 /* 預設隱藏所有分頁內容，只顯示 active 的那一個 */
@@ -100,6 +158,23 @@ main {
   color: #4a7c59;
 }
 
+/* 「代墊款」整區都跟著用暗紅色，呼應上面選中的分頁顏色 */
+#advance h2 {
+  color: #8c3a3a;
+}
+
+#advance .add-form button {
+  background-color: #8c3a3a;
+}
+
+#advance .add-form button:hover {
+  background-color: #6f2d2d;
+}
+
+#advance th {
+  background-color: #f6e9e9;
+}
+
 /* ===== 搜尋區（目前只有看診記錄分頁使用） ===== */
 .search-bar {
   display: flex;
@@ -114,7 +189,8 @@ main {
   font-size: 14px;
 }
 
-.search-bar input[type="date"] {
+.search-bar input[type="date"],
+.search-bar select {
   padding: 6px;
   border: 1px solid #ccc;
   border-radius: 6px;
@@ -185,6 +261,20 @@ th, td {
   padding: 10px;
   border-bottom: 1px solid #eee;
   text-align: left;
+  word-break: break-word;
+}
+
+/* 看診時間表：日期、時間欄位放寬，不要被擠到換行；醫院/科別欄位縮小，資料多時可以換行 */
+.visit-table th:nth-child(1),
+.visit-table td:nth-child(1),
+.visit-table th:nth-child(2),
+.visit-table td:nth-child(2) {
+  white-space: nowrap;
+}
+
+.visit-table th:nth-child(3),
+.visit-table td:nth-child(3) {
+  max-width: 120px;
   word-break: break-word;
 }
 

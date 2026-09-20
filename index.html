@@ -3,25 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>爸爸的照顧網站</title>
+  <title>爸媽的照顧網站</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
   <header>
-    <img src="dad-avatar.gif" alt="爸爸的照片" class="avatar" />
-    <h1>爸爸的照顧網站</h1>
-    <p class="sub">記錄病歷、用藥、看診（含開刀時程）、照顧與長照申請進度</p>
+    <h1>爸媽的照顧網站</h1>
+
+    <!-- 人物切換：點擊照片切換要看爸爸還是媽媽的資料 -->
+    <div class="person-switcher">
+      <button type="button" class="person-btn active" data-person="dad">
+        <img src="dad-avatar.png?v=2" alt="爸爸的照片" class="avatar" />
+        <span>爸爸</span>
+      </button>
+      <button type="button" class="person-btn" data-person="mom">
+        <img src="mom-avatar.png?v=6" alt="媽媽的照片" class="avatar" />
+        <span>媽媽</span>
+      </button>
+    </div>
+
+    <p class="sub">記錄病歷、檢查排程、看診時間表、照顧、長照申請進度與代墊款</p>
     <p class="sync-status" id="visit-sync-status"></p>
   </header>
 
   <!-- 分頁按鈕：點擊切換不同區塊 -->
   <nav class="tabs">
     <button class="tab-btn active" data-tab="medical">病歷資料</button>
-    <button class="tab-btn" data-tab="medicine">用藥資料</button>
-    <button class="tab-btn" data-tab="visit">看診記錄</button>
+    <button class="tab-btn" data-tab="exam">檢查排程</button>
+    <button class="tab-btn" data-tab="visit">看診時間表</button>
     <button class="tab-btn" data-tab="care">照顧記錄</button>
     <button class="tab-btn" data-tab="ltc">長照申請進度</button>
+    <button class="tab-btn" data-tab="advance">代墊款</button>
   </nav>
 
   <main>
@@ -41,27 +54,43 @@
       </table>
     </section>
 
-    <!-- ===== 用藥資料 ===== -->
-    <section id="medicine" class="tab-content">
-      <h2>用藥資料</h2>
-      <form id="medicine-form" class="add-form">
-        <input type="text" name="name" placeholder="藥品名稱" required />
-        <input type="text" name="dose" placeholder="劑量（例如：一顆）" required />
-        <input type="text" name="time" placeholder="服用時間（例如：早晚飯後）" required />
-        <input type="text" name="note" placeholder="備註" />
-        <button type="submit">新增藥品</button>
-      </form>
+    <!-- ===== 檢查排程 ===== -->
+    <section id="exam" class="tab-content">
+      <h2>檢查排程</h2>
+
+      <!-- 篩選區：檢查排程的資料是從醫院系統匯入的，不開放手動新增，只提供篩選查看 -->
+      <div class="search-bar">
+        <label>單據類別：
+          <select id="exam-filter-category">
+            <option value="all" selected>全部</option>
+            <option value="labTest">檢驗單</option>
+            <option value="examCheck">檢查單</option>
+            <option value="radiology">放射單</option>
+          </select>
+        </label>
+        <label>顯示範圍：
+          <select id="exam-filter-status">
+            <option value="valid" selected>未過期</option>
+            <option value="all">全部（含已過期）</option>
+            <option value="expired">已過期</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- 三種單據合併成同一個表格，欄位對齊，手機上比較好讀
+           資料都是從醫院系統匯入的，不開放新增／編輯／刪除，只提供篩選查看 -->
       <table>
-        <thead><tr><th>藥品名稱</th><th>劑量</th><th>服用時間</th><th>備註</th><th></th></tr></thead>
-        <tbody id="medicine-list"></tbody>
+        <thead><tr><th>類別</th><th>科別／項目</th><th>醫師</th><th>日期</th><th>地點／檢體</th></tr></thead>
+        <tbody id="exam-list"></tbody>
       </table>
     </section>
 
-    <!-- ===== 看診記錄 ===== -->
+    <!-- ===== 看診時間表 ===== -->
     <section id="visit" class="tab-content">
-      <h2>看診記錄</h2>
+      <h2>看診時間表</h2>
 
-      <!-- 搜尋區：依日期起迄、照顧者篩選看診記錄 -->
+      <!-- 這裡的資料都是從 Google 行事曆同步過來的，不開放手動新增，只提供搜尋查看
+           只有「照顧者①」「照顧者②」「備註」這三欄可以在網站上編輯 -->
       <div class="search-bar">
         <label>日期起：<input type="date" id="visit-search-start" /></label>
         <label>日期迄：<input type="date" id="visit-search-end" /></label>
@@ -75,36 +104,19 @@
             <option value="沛">沛</option>
           </select>
         </label>
+        <label>顯示範圍：
+          <select id="visit-search-status">
+            <option value="valid" selected>未過期</option>
+            <option value="all">全部（含已過期）</option>
+            <option value="expired">已過期</option>
+          </select>
+        </label>
         <button type="button" id="visit-search-btn">搜尋</button>
         <button type="button" id="visit-search-clear-btn">清除搜尋</button>
       </div>
 
-      <form id="visit-form" class="add-form">
-        <input type="date" name="date" required />
-        <input type="time" name="time" />
-        <input type="text" name="hospital" placeholder="醫院 / 科別" required />
-        <input type="text" name="doctor" placeholder="醫師姓名" />
-        <select name="caregiver1">
-          <option value="">照顧者①（可留白）</option>
-          <option value="甄">甄</option>
-          <option value="瑤">瑤</option>
-          <option value="慈">慈</option>
-          <option value="書">書</option>
-          <option value="沛">沛</option>
-        </select>
-        <select name="caregiver2">
-          <option value="">照顧者②（可留白）</option>
-          <option value="甄">甄</option>
-          <option value="瑤">瑤</option>
-          <option value="慈">慈</option>
-          <option value="書">書</option>
-          <option value="沛">沛</option>
-        </select>
-        <input type="text" name="note" placeholder="備註" />
-        <button type="submit">新增看診</button>
-      </form>
-      <table>
-        <thead><tr><th>日期</th><th>時間</th><th>醫院 / 科別</th><th>醫師</th><th>照顧者①</th><th>照顧者②</th><th>備註</th><th></th></tr></thead>
+      <table class="visit-table">
+        <thead><tr><th>日期</th><th>時間</th><th>醫院 / 科別</th><th>照顧①</th><th>照顧②</th><th>備註</th><th></th></tr></thead>
         <tbody id="visit-list"></tbody>
       </table>
     </section>
@@ -145,10 +157,40 @@
       </table>
     </section>
 
+    <!-- ===== 代墊款 ===== -->
+    <section id="advance" class="tab-content">
+      <h2>代墊款</h2>
+      <form id="advance-form" class="add-form">
+        <input type="date" name="date" required />
+        <select name="item" required>
+          <option value="">代墊款項目</option>
+          <option value="輔具">輔具</option>
+          <option value="長照服務">長照服務</option>
+          <option value="診療費">診療費</option>
+          <option value="醫療物資">醫療物資</option>
+        </select>
+        <input type="number" name="amount" placeholder="金額" min="0" step="1" required />
+        <select name="payer" required>
+          <option value="">代墊款人</option>
+          <option value="甄">甄</option>
+          <option value="瑤">瑤</option>
+          <option value="慈">慈</option>
+          <option value="書">書</option>
+          <option value="沛">沛</option>
+        </select>
+        <input type="text" name="note" placeholder="備註" />
+        <button type="submit">新增紀錄</button>
+      </form>
+      <table>
+        <thead><tr><th>日期</th><th>項目</th><th>金額</th><th>代墊款人</th><th>備註</th><th></th></tr></thead>
+        <tbody id="advance-list"></tbody>
+      </table>
+    </section>
+
   </main>
 
   <footer>
-    <p>病歷、用藥、照顧、長照申請進度存在這台電腦的瀏覽器裡（localStorage）。<br />看診記錄已改成連線 Supabase 資料庫，換電腦打開也看得到，但需要能連上網路。</p>
+    <p>點上方照片可以切換「爸爸」「媽媽」，各自的資料分開存放、互不影響。<br />病歷、檢查排程、照顧、長照申請進度、代墊款存在這台電腦的瀏覽器裡（localStorage）。<br />看診時間表已改成連線 Supabase 資料庫，換電腦打開也看得到，但需要能連上網路。</p>
   </footer>
 
   <!-- Supabase 官方 JS 函式庫（從網路載入），看診記錄要靠它跟資料庫溝通 -->
