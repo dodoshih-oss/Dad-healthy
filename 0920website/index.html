@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>爸爸的照顧網站</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header>
+    <img src="dad-avatar.gif" alt="爸爸的照片" class="avatar" />
+    <h1>爸爸的照顧網站</h1>
+    <p class="sub">記錄病歷、用藥、看診（含開刀時程）、照顧與長照申請進度</p>
+  </header>
+
+  <!-- 分頁按鈕：點擊切換不同區塊 -->
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="medical">病歷資料</button>
+    <button class="tab-btn" data-tab="medicine">用藥資料</button>
+    <button class="tab-btn" data-tab="visit">看診記錄</button>
+    <button class="tab-btn" data-tab="care">照顧記錄</button>
+    <button class="tab-btn" data-tab="ltc">長照申請進度</button>
+  </nav>
+
+  <main>
+
+    <!-- ===== 病歷資料 ===== -->
+    <section id="medical" class="tab-content active">
+      <h2>病歷資料</h2>
+      <form id="medical-form" class="add-form">
+        <input type="date" name="date" required />
+        <input type="text" name="title" placeholder="病症 / 診斷名稱" required />
+        <input type="text" name="note" placeholder="備註（例如：檢查結果、醫囑）" />
+        <button type="submit">新增紀錄</button>
+      </form>
+      <table>
+        <thead><tr><th>日期</th><th>病症 / 診斷</th><th>備註</th><th></th></tr></thead>
+        <tbody id="medical-list"></tbody>
+      </table>
+    </section>
+
+    <!-- ===== 用藥資料 ===== -->
+    <section id="medicine" class="tab-content">
+      <h2>用藥資料</h2>
+      <form id="medicine-form" class="add-form">
+        <input type="text" name="name" placeholder="藥品名稱" required />
+        <input type="text" name="dose" placeholder="劑量（例如：一顆）" required />
+        <input type="text" name="time" placeholder="服用時間（例如：早晚飯後）" required />
+        <input type="text" name="note" placeholder="備註" />
+        <button type="submit">新增藥品</button>
+      </form>
+      <table>
+        <thead><tr><th>藥品名稱</th><th>劑量</th><th>服用時間</th><th>備註</th><th></th></tr></thead>
+        <tbody id="medicine-list"></tbody>
+      </table>
+    </section>
+
+    <!-- ===== 看診記錄 ===== -->
+    <section id="visit" class="tab-content">
+      <h2>看診記錄</h2>
+      <form id="visit-form" class="add-form">
+        <input type="date" name="date" required />
+        <input type="time" name="time" />
+        <input type="text" name="hospital" placeholder="醫院 / 科別" required />
+        <input type="text" name="doctor" placeholder="醫師姓名" />
+        <input type="text" name="companion" placeholder="陪同者（可留白）" />
+        <input type="text" name="note" placeholder="備註" />
+        <button type="submit">新增看診</button>
+      </form>
+      <table>
+        <thead><tr><th>日期</th><th>時間</th><th>醫院 / 科別</th><th>醫師</th><th>陪同者</th><th>備註</th><th></th></tr></thead>
+        <tbody id="visit-list"></tbody>
+      </table>
+    </section>
+
+    <!-- ===== 照顧記錄 ===== -->
+    <section id="care" class="tab-content">
+      <h2>每次照顧記錄</h2>
+      <form id="care-form" class="add-form">
+        <input type="date" name="date" required />
+        <input type="text" name="content" placeholder="照顧內容（例如：協助洗澡、量血壓）" required />
+        <input type="text" name="note" placeholder="備註" />
+        <button type="submit">新增紀錄</button>
+      </form>
+      <table>
+        <thead><tr><th>日期</th><th>照顧內容</th><th>備註</th><th></th></tr></thead>
+        <tbody id="care-list"></tbody>
+      </table>
+    </section>
+
+    <!-- ===== 長照申請進度 ===== -->
+    <section id="ltc" class="tab-content">
+      <h2>長照申請進度 / 資料</h2>
+      <form id="ltc-form" class="add-form">
+        <input type="text" name="item" placeholder="申請項目（例如：長照2.0評估）" required />
+        <select name="status" required>
+          <option value="申請中">申請中</option>
+          <option value="審核中">審核中</option>
+          <option value="已核准">已核准</option>
+          <option value="已完成">已完成</option>
+        </select>
+        <input type="date" name="date" required />
+        <input type="text" name="note" placeholder="備註（例如：聯絡窗口、待補文件）" />
+        <button type="submit">新增項目</button>
+      </form>
+      <table>
+        <thead><tr><th>申請項目</th><th>狀態</th><th>日期</th><th>備註</th><th></th></tr></thead>
+        <tbody id="ltc-list"></tbody>
+      </table>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>資料只會儲存在這台電腦的瀏覽器裡（localStorage），換電腦或清除瀏覽器資料會遺失，請自行留意備份。</p>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

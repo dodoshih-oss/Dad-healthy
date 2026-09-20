@@ -1,0 +1,198 @@
+/* ===== 基本樣式設定 ===== */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Microsoft JhengHei", "PingFang TC", sans-serif;
+  background-color: #f5f7fa;
+  color: #2d3436;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  background-color: #4a7c59;
+  color: white;
+  padding: 20px;
+  text-align: center;
+}
+
+/* 爸爸的頭像照片：圓形顯示 */
+.avatar {
+  width: 96px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid white;
+  margin-bottom: 10px;
+}
+
+header h1 {
+  margin: 0 0 6px 0;
+}
+
+header .sub {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+/* ===== 分頁按鈕列 ===== */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  background-color: white;
+  border-bottom: 1px solid #ddd;
+}
+
+.tab-btn {
+  padding: 10px 16px;
+  border: 1px solid #4a7c59;
+  background-color: white;
+  color: #4a7c59;
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.tab-btn:hover {
+  background-color: #eaf3ec;
+}
+
+/* 目前選中的分頁按鈕 */
+.tab-btn.active {
+  background-color: #4a7c59;
+  color: white;
+}
+
+main {
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 0 16px;
+}
+
+/* 預設隱藏所有分頁內容，只顯示 active 的那一個 */
+.tab-content {
+  display: none;
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.tab-content.active {
+  display: block;
+}
+
+.tab-content h2 {
+  margin-top: 0;
+  color: #4a7c59;
+}
+
+/* ===== 新增資料的表單 ===== */
+.add-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.add-form input,
+.add-form select {
+  flex: 1 1 150px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.add-form button {
+  padding: 8px 16px;
+  background-color: #4a7c59;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.add-form button:hover {
+  background-color: #3a6347;
+}
+
+/* ===== 資料列表表格 ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th, td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+  word-break: break-word;
+}
+
+th {
+  background-color: #eaf3ec;
+  color: #2d3436;
+}
+
+.delete-btn {
+  background-color: #d9534f;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: 4px;
+}
+
+.delete-btn:hover {
+  background-color: #b83a37;
+}
+
+/* 編輯 / 儲存 按鈕 */
+.edit-btn {
+  background-color: #4a7c59;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.edit-btn:hover {
+  background-color: #3a6347;
+}
+
+/* 編輯模式底下的輸入框，讓表格看起來不會太擁擠 */
+.edit-input {
+  width: 100%;
+  padding: 4px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+footer {
+  text-align: center;
+  color: #888;
+  font-size: 12px;
+  padding: 20px;
+}
+
+/* 手機版：表單欄位改為單欄排列 */
+@media (max-width: 600px) {
+  .add-form input,
+  .add-form select {
+    flex: 1 1 100%;
+  }
+}
