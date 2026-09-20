@@ -12,6 +12,7 @@
     <img src="dad-avatar.gif" alt="爸爸的照片" class="avatar" />
     <h1>爸爸的照顧網站</h1>
     <p class="sub">記錄病歷、用藥、看診（含開刀時程）、照顧與長照申請進度</p>
+    <p class="sync-status" id="visit-sync-status"></p>
   </header>
 
   <!-- 分頁按鈕：點擊切換不同區塊 -->
@@ -59,17 +60,41 @@
     <!-- ===== 看診記錄 ===== -->
     <section id="visit" class="tab-content">
       <h2>看診記錄</h2>
+
+      <!-- 搜尋區：依日期起迄篩選看診記錄 -->
+      <div class="search-bar">
+        <label>日期起：<input type="date" id="visit-search-start" /></label>
+        <label>日期迄：<input type="date" id="visit-search-end" /></label>
+        <button type="button" id="visit-search-btn">搜尋</button>
+        <button type="button" id="visit-search-clear-btn">清除搜尋</button>
+      </div>
+
       <form id="visit-form" class="add-form">
         <input type="date" name="date" required />
         <input type="time" name="time" />
         <input type="text" name="hospital" placeholder="醫院 / 科別" required />
         <input type="text" name="doctor" placeholder="醫師姓名" />
-        <input type="text" name="companion" placeholder="陪同者（可留白）" />
+        <select name="caregiver1">
+          <option value="">照顧者①（可留白）</option>
+          <option value="甄">甄</option>
+          <option value="瑤">瑤</option>
+          <option value="慈">慈</option>
+          <option value="書">書</option>
+          <option value="沛">沛</option>
+        </select>
+        <select name="caregiver2">
+          <option value="">照顧者②（可留白）</option>
+          <option value="甄">甄</option>
+          <option value="瑤">瑤</option>
+          <option value="慈">慈</option>
+          <option value="書">書</option>
+          <option value="沛">沛</option>
+        </select>
         <input type="text" name="note" placeholder="備註" />
         <button type="submit">新增看診</button>
       </form>
       <table>
-        <thead><tr><th>日期</th><th>時間</th><th>醫院 / 科別</th><th>醫師</th><th>陪同者</th><th>備註</th><th></th></tr></thead>
+        <thead><tr><th>日期</th><th>時間</th><th>醫院 / 科別</th><th>醫師</th><th>照顧者①</th><th>照顧者②</th><th>備註</th><th></th></tr></thead>
         <tbody id="visit-list"></tbody>
       </table>
     </section>
@@ -113,9 +138,11 @@
   </main>
 
   <footer>
-    <p>資料只會儲存在這台電腦的瀏覽器裡（localStorage），換電腦或清除瀏覽器資料會遺失，請自行留意備份。</p>
+    <p>病歷、用藥、照顧、長照申請進度存在這台電腦的瀏覽器裡（localStorage）。<br />看診記錄已改成連線 Supabase 資料庫，換電腦打開也看得到，但需要能連上網路。</p>
   </footer>
 
+  <!-- Supabase 官方 JS 函式庫（從網路載入），看診記錄要靠它跟資料庫溝通 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

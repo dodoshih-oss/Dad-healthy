@@ -38,6 +38,13 @@ header .sub {
   opacity: 0.9;
 }
 
+/* 看診記錄跟 Supabase 連線狀態的小提示文字 */
+.sync-status {
+  margin: 6px 0 0 0;
+  font-size: 12px;
+  opacity: 0.85;
+}
+
 /* ===== 分頁按鈕列 ===== */
 .tabs {
   display: flex;
@@ -91,6 +98,49 @@ main {
 .tab-content h2 {
   margin-top: 0;
   color: #4a7c59;
+}
+
+/* ===== 搜尋區（目前只有看診記錄分頁使用） ===== */
+.search-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  background-color: #f5f7fa;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.search-bar input[type="date"] {
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  margin-left: 4px;
+}
+
+.search-bar button {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  background-color: #4a7c59;
+  color: white;
+}
+
+.search-bar button:hover {
+  background-color: #3a6347;
+}
+
+#visit-search-clear-btn {
+  background-color: #999;
+}
+
+#visit-search-clear-btn:hover {
+  background-color: #777;
 }
 
 /* ===== 新增資料的表單 ===== */
