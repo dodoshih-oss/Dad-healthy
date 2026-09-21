@@ -158,21 +158,86 @@ main {
   color: #4a7c59;
 }
 
-/* 「代墊款」整區都跟著用暗紅色，呼應上面選中的分頁顏色 */
+/* 「購物/墊款清單」標題呼應上面選中的分頁顏色 */
 #advance h2 {
   color: #8c3a3a;
 }
 
-#advance .add-form button {
+/* 「已代墊款項」「需要購買清單」各自用一個獨立的卡片區塊呈現，
+   讓第一次看網站的人可以馬上分辨這兩塊是不同的東西 */
+.section-block {
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 24px;
+}
+
+.section-block h3 {
+  margin: 0 0 4px 0;
+}
+
+/* 區塊標題下方的一行說明文字，告訴使用者這裡該填什麼 */
+.section-block-desc {
+  margin: 0 0 14px 0;
+  color: #666;
+  font-size: 13px;
+}
+
+/* 已代墊款項：延續暗紅色（跟金錢有關） */
+.section-block--advance {
+  background-color: #fbf4f4;
+  border-left: 5px solid #8c3a3a;
+}
+
+.section-block--advance h3 {
+  color: #8c3a3a;
+}
+
+.section-block--advance .add-form button {
   background-color: #8c3a3a;
 }
 
-#advance .add-form button:hover {
+.section-block--advance .add-form button:hover {
   background-color: #6f2d2d;
 }
 
-#advance th {
+.section-block--advance th {
   background-color: #f6e9e9;
+}
+
+/* 需要購買清單：改用藍色，跟上面代墊款的暗紅色明顯區分開來 */
+.section-block--shopping {
+  background-color: #f2f6fb;
+  border-left: 5px solid #33608c;
+}
+
+.section-block--shopping h3 {
+  color: #33608c;
+}
+
+.section-block--shopping .add-form button {
+  background-color: #33608c;
+}
+
+.section-block--shopping .add-form button:hover {
+  background-color: #274a6e;
+}
+
+.section-block--shopping th {
+  background-color: #e7eef6;
+}
+
+/* 需要購買清單：「已購買」欄位放打勾方塊，欄寬縮小、置中 */
+.shopping-table th:nth-child(1),
+.shopping-table td:nth-child(1) {
+  width: 70px;
+  text-align: center;
+}
+
+.shopping-table th:nth-child(1) input,
+.shopping-table td:nth-child(1) input {
+  width: 18px;
+  height: 18px;
 }
 
 /* ===== 搜尋區（目前只有看診記錄分頁使用） ===== */
@@ -332,6 +397,12 @@ th, td {
   margin-bottom: 16px;
   font-size: 14px;
   line-height: 1.6;
+}
+
+/* 摘要內容是 script.js 自動產生的多行文字，保留換行、每個分類獨立一行 */
+.medical-summary-text {
+  white-space: pre-wrap;
+  margin-top: 6px;
 }
 
 /* 病歷資料每個分類的標題 */
