@@ -23,7 +23,7 @@
       </button>
     </div>
 
-    <p class="sub">記錄病歷、檢查排程、看診時間表、照顧、長照申請進度與代墊款</p>
+    <p class="sub">記錄病歷、檢查排程、看診時間表、照顧、長照申請進度與購物/墊款清單</p>
     <p class="sync-status" id="visit-sync-status"></p>
   </header>
 
@@ -34,7 +34,7 @@
     <button class="tab-btn" data-tab="visit">看診時間表</button>
     <button class="tab-btn" data-tab="care">照顧記錄</button>
     <button class="tab-btn" data-tab="ltc">長照申請進度</button>
-    <button class="tab-btn" data-tab="advance">代墊款</button>
+    <button class="tab-btn" data-tab="advance">購物/墊款清單</button>
   </nav>
 
   <main>
@@ -43,12 +43,11 @@
     <section id="medical" class="tab-content active">
       <h2>病歷資料</h2>
 
-      <!-- 整體病況摘要：各科病症其實會互相影響，這裡先做一個總結 -->
+      <!-- 整體病況摘要：這段文字由 script.js 依照「各分類最新一筆病歷」自動整理產生，
+           不是寫死的內容，之後新增或修改病歷資料，這裡會自動跟著更新 -->
       <div class="medical-summary">
         <strong>整體病況摘要：</strong>
-        失智症患者的腦部退化需要外界刺激，聽力退化會減少刺激，因此耳鼻喉科的聽力問題會影響神經內科的失智狀況；
-        血糖控制不佳會讓腎功能持續惡化，內分泌科的血糖／血壓需特別留意；
-        平時應多安排活動、避免久坐，並留意跌倒風險（曾發生鎖骨骨折）。各科詳細病歷請見下方分類列表。
+        <div id="medical-summary-text" class="medical-summary-text"></div>
       </div>
 
       <!-- 搜尋區：可以依病症分類篩選，只看某一科的病歷；選「全部」會顯示所有分類 -->
@@ -173,6 +172,7 @@
       <form id="ltc-form" class="add-form">
         <input type="text" name="item" placeholder="申請項目（例如：長照2.0評估）" required />
         <select name="status" required>
+          <option value="待決議">待決議</option>
           <option value="申請中">申請中</option>
           <option value="審核中">審核中</option>
           <option value="已核准">已核准</option>
@@ -188,40 +188,61 @@
       </table>
     </section>
 
-    <!-- ===== 代墊款 ===== -->
+    <!-- ===== 購物/墊款清單 ===== -->
     <section id="advance" class="tab-content">
-      <h2>代墊款</h2>
-      <form id="advance-form" class="add-form">
-        <input type="date" name="date" required />
-        <select name="item" required>
-          <option value="">代墊款項目</option>
-          <option value="輔具">輔具</option>
-          <option value="長照服務">長照服務</option>
-          <option value="診療費">診療費</option>
-          <option value="醫療物資">醫療物資</option>
-        </select>
-        <input type="number" name="amount" placeholder="金額" min="0" step="1" required />
-        <select name="payer" required>
-          <option value="">代墊款人</option>
-          <option value="甄">甄</option>
-          <option value="瑤">瑤</option>
-          <option value="慈">慈</option>
-          <option value="書">書</option>
-          <option value="沛">沛</option>
-        </select>
-        <textarea name="note" placeholder="備註（按 Enter 可換行）" rows="2"></textarea>
-        <button type="submit">新增紀錄</button>
-      </form>
-      <table>
-        <thead><tr><th>日期</th><th>項目</th><th>金額</th><th>代墊款人</th><th>備註</th><th></th></tr></thead>
-        <tbody id="advance-list"></tbody>
-      </table>
+      <h2>購物/墊款清單</h2>
+
+      <!-- 已代墊款項：原本的代墊款紀錄，用獨立區塊跟「需要購買清單」分開，避免混淆 -->
+      <div class="section-block section-block--advance">
+        <h3>💰 已代墊款項</h3>
+        <p class="section-block-desc">已經先付錢的花費，記錄「誰、什麼時候、代墊了多少錢」，方便之後歸還。</p>
+        <form id="advance-form" class="add-form">
+          <input type="date" name="date" required />
+          <select name="item" required>
+            <option value="">代墊款項目</option>
+            <option value="輔具">輔具</option>
+            <option value="長照服務">長照服務</option>
+            <option value="診療費">診療費</option>
+            <option value="醫療物資">醫療物資</option>
+          </select>
+          <input type="number" name="amount" placeholder="金額" min="0" step="1" required />
+          <select name="payer" required>
+            <option value="">代墊款人</option>
+            <option value="甄">甄</option>
+            <option value="瑤">瑤</option>
+            <option value="慈">慈</option>
+            <option value="書">書</option>
+            <option value="沛">沛</option>
+          </select>
+          <textarea name="note" placeholder="備註（按 Enter 可換行）" rows="2"></textarea>
+          <button type="submit">新增紀錄</button>
+        </form>
+        <table>
+          <thead><tr><th>日期</th><th>項目</th><th>金額</th><th>代墊款人</th><th>備註</th><th></th></tr></thead>
+          <tbody id="advance-list"></tbody>
+        </table>
+      </div>
+
+      <!-- 需要購買清單：先列出建議購買的項目，大家可以自行打勾是否已購買，用獨立區塊呈現 -->
+      <div class="section-block section-block--shopping">
+        <h3>🛒 需要購買清單</h3>
+        <p class="section-block-desc">還沒買、需要準備的東西，買了之後直接打勾「已購買」即可，不用填金額。</p>
+        <form id="shopping-form" class="add-form">
+          <input type="text" name="item" placeholder="項目名稱（例如：濕紙巾）" required />
+          <textarea name="note" placeholder="備註（按 Enter 可換行）" rows="2"></textarea>
+          <button type="submit">新增項目</button>
+        </form>
+        <table class="shopping-table">
+          <thead><tr><th>已購買</th><th>項目</th><th>備註</th><th></th></tr></thead>
+          <tbody id="shopping-list"></tbody>
+        </table>
+      </div>
     </section>
 
   </main>
 
   <footer>
-    <p>點上方照片可以切換「爸爸」「媽媽」，各自的資料分開存放、互不影響。<br />病歷、檢查排程、照顧、長照申請進度、代墊款存在這台電腦的瀏覽器裡（localStorage）。<br />看診時間表已改成連線 Supabase 資料庫，換電腦打開也看得到，但需要能連上網路。</p>
+    <p>點上方照片可以切換「爸爸」「媽媽」，各自的資料分開存放、互不影響。<br />病歷、檢查排程、照顧、長照申請進度、購物/墊款清單存在這台電腦的瀏覽器裡（localStorage）。<br />看診時間表已改成連線 Supabase 資料庫，換電腦打開也看得到，但需要能連上網路。</p>
   </footer>
 
   <!-- Supabase 官方 JS 函式庫（從網路載入），看診記錄要靠它跟資料庫溝通 -->

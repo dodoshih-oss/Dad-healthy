@@ -231,7 +231,7 @@ const CONFIG = {
       {
         key: "status",
         type: "select",
-        options: ["申請中", "審核中", "已核准", "已完成"],
+        options: ["待決議", "申請中", "審核中", "已核准", "已完成"],
       },
       { key: "date", type: "date" },
       { key: "note", type: "textarea" },
@@ -249,6 +249,15 @@ const CONFIG = {
       },
       { key: "amount", type: "number" },
       { key: "payer", type: "select", options: ["甄", "瑤", "慈", "書", "沛"] },
+      { key: "note", type: "textarea" },
+    ],
+  },
+  // 需要購買清單：欄位順序「是否已購買 → 項目 → 備註」，
+  // 已購買可以直接在列表上打勾，不用進到編輯模式
+  shopping: {
+    fields: [
+      { key: "purchased", type: "checkbox" },
+      { key: "item", type: "text" },
       { key: "note", type: "textarea" },
     ],
   },
@@ -464,6 +473,66 @@ function importSeedUpdate20260921Once() {
 }
 
 // ---------------------------------------
+// 補充資料（2026-09-21 下午）：Costco 助聽器廠牌比較，內部先同步、尚未決議
+// 用新的旗標，就算之前已經匯入過一次舊資料，這批補充資料還是會加進去一次
+// ---------------------------------------
+
+const SEED_UPDATE_20260921B_FLAG_KEY = "dadCareSeeded_update_20260921b";
+
+function importSeedUpdate20260921BOnce() {
+  const alreadySeeded = localStorage.getItem(SEED_UPDATE_20260921B_FLAG_KEY);
+  if (alreadySeeded) {
+    return; // 已經匯入過了，不再重複
+  }
+
+  allData.ltc.push({
+    item: "助聽器廠牌比較（Costco．待決議）",
+    status: "待決議",
+    date: "2026-09-21",
+    note:
+      "尚未決議，先內部同步資訊。目前 Costco 主推三個品牌的選配式高階助聽器，現場售價皆為 42,999 元起／一對（含兩支助聽器＋一個充電盒）：\n" +
+      "1. Philips 飛利浦（母公司 Demant 集團，與 Oticon 同源）：強調AI語音處理技術，吵雜環境下語音辨識度表現極佳\n" +
+      "2. Jabra 捷波朗（母公司 GN 集團，與 ReSound 同源）：藍牙連線能力強，支援 iPhone 與 Android 直連，音質自然\n" +
+      "3. Rexton 力斯頓（母公司 WS Audiology，與 Signia 同源）：結構堅固、耐用性高，適合運動量大或經常出汗的使用者\n" +
+      "備註：Costco 自有品牌 Kirkland Signature（KS）助聽器目前在許多分店已暫停更新或缺貨，Costco 表示上述三品牌硬體效能等同市面價值雙倍以上的醫療級產品。",
+    person: "dad",
+  });
+
+  saveData(allData);
+  localStorage.setItem(SEED_UPDATE_20260921B_FLAG_KEY, "true"); // 標記已匯入
+}
+
+// ---------------------------------------
+// 需要購買清單的初始資料
+// 只在「第一次開啟網站」時自動加入一次，之後不會重複匯入，
+// 也不會蓋掉使用者自己新增／刪除／編輯（含打勾）過的資料
+// ---------------------------------------
+
+const SHOPPING_SEED_FLAG_KEY = "dadCareSeeded_shopping_20260921";
+
+const SHOPPING_SEED_DATA = [
+  { item: "鎖骨八字帶", purchased: false, note: "", person: "dad" },
+  { item: "尿布", purchased: false, note: "", person: "dad" },
+  { item: "防水尿墊", purchased: false, note: "", person: "dad" },
+  { item: "耳機（助聽器）", purchased: false, note: "", person: "dad" },
+  { item: "血糖儀／血糖試紙", purchased: false, note: "", person: "dad" },
+];
+
+function importShoppingSeedDataOnce() {
+  const alreadySeeded = localStorage.getItem(SHOPPING_SEED_FLAG_KEY);
+  if (alreadySeeded) {
+    return; // 已經匯入過了，不再重複
+  }
+
+  SHOPPING_SEED_DATA.forEach((item) => {
+    allData.shopping.push(item);
+  });
+
+  saveData(allData);
+  localStorage.setItem(SHOPPING_SEED_FLAG_KEY, "true"); // 標記已匯入
+}
+
+// ---------------------------------------
 // 畫面渲染：把資料畫成表格列
 // ---------------------------------------
 
@@ -495,6 +564,11 @@ function createEditCell(field, currentValue) {
     input = document.createElement("textarea");
     input.rows = 3;
     input.value = currentValue || "";
+  } else if (field.type === "checkbox") {
+    // 「是否已購買」用打勾方塊，不是輸入文字
+    input = document.createElement("input");
+    input.type = "checkbox";
+    input.checked = !!currentValue;
   } else {
     input = document.createElement("input");
     input.type = field.type; // date、time 或 text
@@ -502,7 +576,9 @@ function createEditCell(field, currentValue) {
   }
 
   input.dataset.fieldKey = field.key; // 記住這個輸入框對應哪個欄位
-  input.className = "edit-input";
+  if (field.type !== "checkbox") {
+    input.className = "edit-input";
+  }
   td.appendChild(input);
   return td;
 }
@@ -698,9 +774,55 @@ function renderList(category) {
   });
 }
 
+// 把一段備註濃縮成一行摘要文字，太長就截斷加上「…」
+function summarizeMedicalNote(note, maxLen) {
+  if (!note) {
+    return "";
+  }
+  const oneLine = note.replace(/\n/g, "　"); // 換行改成全形空白，避免摘要被拆成好幾行
+  if (oneLine.length <= maxLen) {
+    return oneLine;
+  }
+  return oneLine.slice(0, maxLen) + "…";
+}
+
+// 整體病況摘要：不是寫死的文字，而是每次都依照「各分類目前最新一筆病歷」自動整理，
+// 只要新增或修改病歷資料，摘要就會跟著自動更新，家人一眼就能看到目前最新狀況
+function renderMedicalSummary() {
+  const el = document.getElementById("medical-summary-text");
+  if (!el) {
+    return;
+  }
+
+  const rows = allData.medical.filter((item) => matchesPersonFilter(item));
+
+  if (rows.length === 0) {
+    el.textContent = "目前尚無病歷資料。";
+    return;
+  }
+
+  // 各病症其實會互相影響（失智／聽力／血糖腎功能／跌倒），
+  // 所以不逐一條列，改成一段整體狀況說明
+  // 「最新進度」這一段會自動抓「目前最新一筆病歷」，其他病歷更新後會跟著改變
+  const sorted = [...rows].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const latest = sorted[0];
+  const latestDateLabel = formatShortDate(latest.date);
+  const latestNote = summarizeMedicalNote(latest.note, 80);
+
+  const paragraph =
+    "爸爸目前同時有失智、聽力退化、血糖／血壓控制不佳、攝護腺泌尿問題，以及跌倒骨折復原等多項狀況，彼此會互相影響：" +
+    "腦部退化需要外界刺激，聽力變差會減少刺激而加重失智；血糖控制不佳則會讓腎功能持續惡化，需要長期留意。\n" +
+    `最新進度（${latestDateLabel}）：${latest.title}${latestNote ? "－" + latestNote : ""}\n` +
+    "照顧注意事項：忌甜食、勿吃太飽、多喝水；白天多安排活動、避免久坐；留意跌倒風險；並持續追蹤聽力檢測與助聽器評估進度。";
+
+  el.textContent = paragraph;
+}
+
 // 病歷資料專用的畫面渲染：依「病症分類」分組顯示，
 // 同一分類裡的資料再依日期新到舊排序，方便看出同一種病症不同時期的變化
 function renderMedicalList() {
+  renderMedicalSummary(); // 每次重畫病歷列表，順便重新整理一次摘要
+
   const container = document.getElementById("medical-groups");
   if (!container) {
     return;
@@ -768,6 +890,61 @@ function renderMedicalList() {
     });
 
     container.appendChild(table);
+  });
+}
+
+// 需要購買清單專用的畫面渲染：「是否已購買」直接顯示打勾方塊，
+// 點一下就切換勾選狀態並儲存，不用進到編輯模式
+function renderShoppingList() {
+  const tbody = document.getElementById("shopping-list");
+  if (!tbody) {
+    return;
+  }
+  tbody.innerHTML = ""; // 先清空
+
+  let rows = allData.shopping.map((item, index) => ({ item, index }));
+  rows = rows.filter((row) => matchesPersonFilter(row.item)); // 只顯示目前選擇的人物的資料
+
+  rows.forEach(({ item, index }) => {
+    const tr = document.createElement("tr");
+
+    // 「是否已購買」：直接放打勾方塊，點一下馬上生效
+    const checkTd = document.createElement("td");
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = !!item.purchased;
+    checkbox.addEventListener("change", () => {
+      item.purchased = checkbox.checked;
+      saveData(allData);
+    });
+    checkTd.appendChild(checkbox);
+    tr.appendChild(checkTd);
+
+    tr.appendChild(createDisplayCell(item.item));
+    tr.appendChild(createDisplayCell(item.note));
+
+    const actionTd = document.createElement("td");
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "編輯";
+    editBtn.className = "edit-btn";
+    editBtn.addEventListener("click", () => {
+      startEdit("shopping", index, tr);
+    });
+    actionTd.appendChild(editBtn);
+
+    const delBtn = document.createElement("button");
+    delBtn.textContent = "刪除";
+    delBtn.className = "delete-btn";
+    delBtn.addEventListener("click", () => {
+      allData.shopping.splice(index, 1);
+      saveData(allData);
+      renderShoppingList();
+    });
+    actionTd.appendChild(delBtn);
+
+    tr.appendChild(actionTd);
+    tbody.appendChild(tr);
   });
 }
 
@@ -852,14 +1029,17 @@ function startEdit(category, index, tr) {
   saveBtn.className = "edit-btn";
   saveBtn.addEventListener("click", () => {
     // 把每個輸入框目前的值讀出來，更新回資料裡
+    // 打勾方塊要讀 checked，不是 value
     const inputs = tr.querySelectorAll("[data-field-key]");
     inputs.forEach((input) => {
-      item[input.dataset.fieldKey] = input.value;
+      item[input.dataset.fieldKey] = input.type === "checkbox" ? input.checked : input.value;
     });
 
     saveData(allData);
     if (category === "medical") {
       renderMedicalList(); // 病歷資料改成分類分組顯示，要用專屬的渲染函式
+    } else if (category === "shopping") {
+      renderShoppingList(); // 需要購買清單也是專屬的渲染函式
     } else {
       renderList(category);
     }
@@ -872,6 +1052,8 @@ function startEdit(category, index, tr) {
   cancelBtn.addEventListener("click", () => {
     if (category === "medical") {
       renderMedicalList(); // 不儲存，直接重畫回原本的資料
+    } else if (category === "shopping") {
+      renderShoppingList(); // 不儲存，直接重畫回原本的資料
     } else {
       renderList(category); // 不儲存，直接重畫回原本的資料
     }
@@ -889,6 +1071,10 @@ function renderAll() {
     }
     if (category === "medical") {
       renderMedicalList(); // 病歷資料改成依分類分組顯示
+      return;
+    }
+    if (category === "shopping") {
+      renderShoppingList(); // 需要購買清單改用專屬的渲染函式
       return;
     }
     renderList(category);
@@ -1036,6 +1222,8 @@ function setupForm(category) {
     saveData(allData);
     if (category === "medical") {
       renderMedicalList(); // 病歷資料改成依分類分組顯示
+    } else if (category === "shopping") {
+      renderShoppingList(); // 需要購買清單改用專屬的渲染函式
     } else {
       renderList(category);
     }
@@ -1214,6 +1402,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   importMedicalSeedDataOnce(); // 匯入病歷資料的初始資料（只做一次）
   importLtcSeedDataOnce(); // 匯入長照申請進度的初始資料（只做一次）
   importSeedUpdate20260921Once(); // 補充聽力問題最新進度（只做一次）
+  importSeedUpdate20260921BOnce(); // 補充 Costco 助聽器廠牌比較資訊，待決議（只做一次）
+  importShoppingSeedDataOnce(); // 匯入需要購買清單的初始資料（只做一次）
 
   // 先把病歷／檢查排程／照顧／長照申請進度畫出來（這些存在 localStorage，讀取很快）
   renderAll();
