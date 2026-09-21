@@ -102,6 +102,44 @@ async function refreshVisitList() {
 // 照顧者下拉選單的選項（第一個空字串代表「留白」）
 const CAREGIVER_OPTIONS = ["", "甄", "瑤", "慈", "書", "沛"];
 
+// 病歷資料的病症分類選項（第一個空字串代表「留白」，方便把不同時期的病歷依科別分組）
+const MEDICAL_CATEGORY_OPTIONS = [
+  "",
+  "神經內科/失智",
+  "泌尿科/攝護腺",
+  "內分泌科/高血壓血脂糖尿病",
+  "耳鼻喉科/重聽",
+  "脊椎骨科/骨折",
+];
+
+// 分組顯示時的分類順序，最後補一個「其他」給沒有分類的資料
+const MEDICAL_GROUP_ORDER = MEDICAL_CATEGORY_OPTIONS.filter((c) => c).concat(["其他"]);
+
+// 依標題裡的關鍵字，猜出這筆病歷屬於哪個分類
+// （舊資料在新增「分類」欄位之前就已經存在，沒有分類資訊，所以用關鍵字判斷）
+function inferMedicalCategory(item) {
+  if (item.category) {
+    return item.category; // 已經有分類就直接用
+  }
+  const text = (item.title || "") + (item.note || "");
+  if (text.includes("血壓") || text.includes("血糖") || text.includes("糖尿")) {
+    return "內分泌科/高血壓血脂糖尿病";
+  }
+  if (text.includes("攝護腺") || text.includes("泌尿")) {
+    return "泌尿科/攝護腺";
+  }
+  if (text.includes("失智") || text.includes("神經內科")) {
+    return "神經內科/失智";
+  }
+  if (text.includes("骨折") || text.includes("跌倒")) {
+    return "脊椎骨科/骨折";
+  }
+  if (text.includes("聽力") || text.includes("耳鼻喉")) {
+    return "耳鼻喉科/重聽";
+  }
+  return "其他";
+}
+
 // 目前選擇要看誰的資料，預設是爸爸；點上方照片可以切換
 let currentPerson = "dad";
 
@@ -128,14 +166,16 @@ const STORAGE_KEY = "dadCareData";
 
 // 各分類的欄位設定：
 // 每個欄位包含 key（存資料用的名稱）跟 type（編輯時要顯示哪種輸入框）
-// type 可以是 "date"、"time"、"text"、"select"
+// type 可以是 "date"、"time"、"text"、"textarea"、"select"
+// "textarea" 是多行文字框，可以按 Enter 換行（備註欄位都用這個）
 // 如果是 select，要另外提供 options（選項清單）
 const CONFIG = {
   medical: {
     fields: [
+      { key: "category", type: "select", options: MEDICAL_CATEGORY_OPTIONS },
       { key: "date", type: "date" },
       { key: "title", type: "text" },
-      { key: "note", type: "text" },
+      { key: "note", type: "textarea" },
     ],
   },
   // 檢查排程底下的三個子分類：檢驗單、檢查單、放射單
@@ -175,14 +215,14 @@ const CONFIG = {
       // 讓不同的人可以各自選擇哪一天來照顧爸爸
       { key: "caregiver1", type: "select", options: CAREGIVER_OPTIONS },
       { key: "caregiver2", type: "select", options: CAREGIVER_OPTIONS },
-      { key: "note", type: "text" }, // 備註，保留空白
+      { key: "note", type: "textarea" }, // 備註，保留空白
     ],
   },
   care: {
     fields: [
       { key: "date", type: "date" },
       { key: "content", type: "text" },
-      { key: "note", type: "text" },
+      { key: "note", type: "textarea" },
     ],
   },
   ltc: {
@@ -194,7 +234,7 @@ const CONFIG = {
         options: ["申請中", "審核中", "已核准", "已完成"],
       },
       { key: "date", type: "date" },
-      { key: "note", type: "text" },
+      { key: "note", type: "textarea" },
     ],
   },
   // 代墊款：欄位順序依「日期 → 項目 → 金額 → 代墊款人 → 備註」呈現，
@@ -209,7 +249,7 @@ const CONFIG = {
       },
       { key: "amount", type: "number" },
       { key: "payer", type: "select", options: ["甄", "瑤", "慈", "書", "沛"] },
-      { key: "note", type: "text" },
+      { key: "note", type: "textarea" },
     ],
   },
 };
@@ -294,6 +334,136 @@ function importExamSeedDataOnce() {
 }
 
 // ---------------------------------------
+// 病歷資料的初始資料（爸爸的慢性病與近況整理）
+// 只在「第一次開啟網站」時自動加入一次，之後不會重複匯入，
+// 也不會蓋掉使用者自己新增／刪除／編輯過的資料
+// ---------------------------------------
+
+const MEDICAL_SEED_FLAG_KEY = "dadCareSeeded_medical_20260921";
+
+const MEDICAL_SEED_DATA = [
+  {
+    category: "內分泌科/高血壓血脂糖尿病",
+    date: "2026-09-21",
+    title: "高血壓",
+    note: "長期慢性病，回診時定期追蹤血壓與用藥",
+    person: "dad",
+  },
+  {
+    category: "內分泌科/高血壓血脂糖尿病",
+    date: "2026-09-21",
+    title: "高血糖／糖尿病",
+    note: "血糖控制不佳，腎功能持續惡化（肌酸酐：5月1.5、7月1.9，標準應低於1.2）。醫囑：忌甜食、勿吃太飽、多喝水、增加運動",
+    person: "dad",
+  },
+  {
+    category: "泌尿科/攝護腺",
+    date: "2026-09-21",
+    title: "攝護腺／泌尿問題",
+    note: "長期於泌尿科（林孝友醫師）追蹤治療",
+    person: "dad",
+  },
+  {
+    category: "神經內科/失智",
+    date: "2026-09-21",
+    title: "失智症（等級待補）",
+    note: "腦部退化需要外界刺激，聽力退化會減少刺激；正在申請身心障礙（聽力）鑑定，失智症等級尚待補充",
+    person: "dad",
+  },
+  {
+    category: "脊椎骨科/骨折",
+    date: "2026-09-23",
+    title: "跌倒－左鎖骨骨折",
+    note: "跌倒導致鎖骨骨折，9/23住院準備、9/24手術、9/25出院（詳見看診時間表）",
+    person: "dad",
+  },
+  {
+    category: "神經內科/失智",
+    date: "2026-09-03",
+    title: "9/3回診紀錄（神經內科．許昭俊醫師）",
+    note: "白天嗜睡是因為活動量不足、不是藥物副作用，醫師已開立3個月連續處方箋，暫不需重做MRI。照護重點：①忌甜食、勿吃太飽、多喝水 ②儘速掛耳鼻喉科做聽力檢查、評估助聽器（聽力退化會減少腦部刺激）③白天多安排活動，減少久坐看電視或臥床",
+    person: "dad",
+  },
+];
+
+function importMedicalSeedDataOnce() {
+  const alreadySeeded = localStorage.getItem(MEDICAL_SEED_FLAG_KEY);
+  if (alreadySeeded) {
+    return; // 已經匯入過了，不再重複
+  }
+
+  MEDICAL_SEED_DATA.forEach((item) => {
+    allData.medical.push(item);
+  });
+
+  saveData(allData);
+  localStorage.setItem(MEDICAL_SEED_FLAG_KEY, "true"); // 標記已匯入
+}
+
+// ---------------------------------------
+// 長照申請進度的初始資料（爸爸的聽力鑑定／助聽器補助申請）
+// ---------------------------------------
+
+const LTC_SEED_FLAG_KEY = "dadCareSeeded_ltc_20260921";
+
+const LTC_SEED_DATA = [
+  {
+    item: "身心障礙（聽力）鑑定與助聽器補助申請",
+    status: "審核中",
+    date: "2026-09-24",
+    note: "9/18已完成第一次純音聽力檢查；9/24耳鼻喉科複診做第二次純音聽力檢查＋聽性腦幹反應檢查（需與第一次間隔一週，且在三個月內）。之後需準備1吋照片3張（近三個月）、身分證明文件、印章，至戶籍地公所社會課領取殘障鑑定表。助聽器補助另需輔具評估報告書、發票、保固書",
+    person: "dad",
+  },
+];
+
+function importLtcSeedDataOnce() {
+  const alreadySeeded = localStorage.getItem(LTC_SEED_FLAG_KEY);
+  if (alreadySeeded) {
+    return; // 已經匯入過了，不再重複
+  }
+
+  LTC_SEED_DATA.forEach((item) => {
+    allData.ltc.push(item);
+  });
+
+  saveData(allData);
+  localStorage.setItem(LTC_SEED_FLAG_KEY, "true"); // 標記已匯入
+}
+
+// ---------------------------------------
+// 補充資料（2026-09-21）：爸爸的聽力問題最新進度
+// 用新的旗標，就算之前已經匯入過一次舊資料，這批補充資料還是會加進去一次
+// ---------------------------------------
+
+const SEED_UPDATE_20260921_FLAG_KEY = "dadCareSeeded_update_20260921";
+
+function importSeedUpdate20260921Once() {
+  const alreadySeeded = localStorage.getItem(SEED_UPDATE_20260921_FLAG_KEY);
+  if (alreadySeeded) {
+    return; // 已經匯入過了，不再重複
+  }
+
+  allData.medical.push({
+    category: "耳鼻喉科/重聽",
+    date: "2026-09-21",
+    title: "聽力問題（耳鼻喉科追蹤）",
+    note: "耳鼻喉科追蹤聽力退化問題。已完成第一次聽力檢測（9/14），第二次聽力檢測時間已調整為10/12（原訂9/24）。目前先借用醫院提供的助聽器試用，同時已至Costco門市評估購買助聽器",
+    person: "dad",
+  });
+
+  allData.ltc.push({
+    item: "助聽器試用與採購評估",
+    status: "審核中",
+    date: "2026-10-12",
+    note: "9/14已完成第一次純音聽力檢測；第二次聽力檢測（純音聽力＋聽性腦幹反應檢查）已改期至10/12（原訂9/24），需與第一次間隔一週內三個月完成。目前先借用醫院的助聽器試用，同時已至Costco評估購買，Costco表示補助申請約需2個月。後續需準備1吋照片3張（近三個月）、身分證明文件、印章，至戶籍地公所社會課領取殘障鑑定表；助聽器補助另需輔具評估報告書、發票、保固書",
+    person: "dad",
+  });
+
+  saveData(allData);
+  localStorage.setItem(SEED_UPDATE_20260921_FLAG_KEY, "true"); // 標記已匯入
+}
+
+// ---------------------------------------
 // 畫面渲染：把資料畫成表格列
 // ---------------------------------------
 
@@ -320,6 +490,11 @@ function createEditCell(field, currentValue) {
       }
       input.appendChild(option);
     });
+  } else if (field.type === "textarea") {
+    // 備註欄位用多行文字框，讓使用者可以按 Enter 換行
+    input = document.createElement("textarea");
+    input.rows = 3;
+    input.value = currentValue || "";
   } else {
     input = document.createElement("input");
     input.type = field.type; // date、time 或 text
@@ -335,6 +510,9 @@ function createEditCell(field, currentValue) {
 // 目前各分類的搜尋條件（只有 visit 會用到日期起迄）
 // 例如 { visit: { start: "2026-01-01", end: "2026-12-31" } }
 const searchFilters = {};
+
+// 病歷資料目前選擇的搜尋分類，"all" 代表全部都顯示
+let medicalSearchCategory = "all";
 
 // 判斷這筆資料是不是「目前選擇的人物」的資料
 // 舊資料沒有標記 person 欄位，一律當作是爸爸的資料
@@ -463,16 +641,26 @@ function renderList(category) {
   rows = rows.filter((row) => matchesPersonFilter(row.item)); // 只顯示目前選擇的人物的資料
   rows = rows.filter((row) => matchesSearchFilter(category, row.item)); // 看診時間表的日期起迄、照顧者篩選
 
+  if (category === "medical") {
+    // 病歷資料：依日期由新到舊排序
+    rows.sort((a, b) => (b.item.date || "").localeCompare(a.item.date || ""));
+  }
+
   rows.forEach(({ item, index }) => {
     const tr = document.createElement("tr");
 
     // 一般顯示模式：每個欄位放一個純文字儲存格
     fields.forEach((field) => {
       // 看診時間表的日期欄位：顯示「月/日(星期幾)」，例如 "9/23(三)"
-      const displayValue =
-        category === "visit" && field.key === "date"
-          ? formatDateWithWeekday(item[field.key])
-          : item[field.key];
+      // 病歷資料的日期欄位：只顯示「月/日」，不顯示年份
+      let displayValue = item[field.key];
+      if (field.key === "date") {
+        if (category === "visit") {
+          displayValue = formatDateWithWeekday(item[field.key]);
+        } else if (category === "medical" || category === "ltc") {
+          displayValue = formatShortDate(item[field.key]);
+        }
+      }
       tr.appendChild(createDisplayCell(displayValue));
     });
 
@@ -507,6 +695,79 @@ function renderList(category) {
 
     tr.appendChild(actionTd);
     tbody.appendChild(tr);
+  });
+}
+
+// 病歷資料專用的畫面渲染：依「病症分類」分組顯示，
+// 同一分類裡的資料再依日期新到舊排序，方便看出同一種病症不同時期的變化
+function renderMedicalList() {
+  const container = document.getElementById("medical-groups");
+  if (!container) {
+    return;
+  }
+  container.innerHTML = ""; // 先清空
+
+  // 把資料跟「原始索引」綁在一起，這樣編輯／刪除才能對應到 allData.medical 正確的位置
+  let rows = allData.medical.map((item, index) => ({ item, index }));
+  rows = rows.filter((row) => matchesPersonFilter(row.item)); // 只顯示目前選擇的人物的資料
+
+  // 病症分類搜尋：選「全部」以外的分類時，只留下該分類的資料
+  const groupOrderToShow =
+    medicalSearchCategory === "all" ? MEDICAL_GROUP_ORDER : [medicalSearchCategory];
+
+  groupOrderToShow.forEach((categoryName) => {
+    const groupRows = rows.filter((row) => inferMedicalCategory(row.item) === categoryName);
+    if (groupRows.length === 0) {
+      return; // 這個分類目前沒有資料，就不顯示這一區塊
+    }
+
+    groupRows.sort((a, b) => (b.item.date || "").localeCompare(a.item.date || ""));
+
+    const groupTitle = document.createElement("h3");
+    groupTitle.className = "medical-group-title";
+    groupTitle.textContent = categoryName;
+    container.appendChild(groupTitle);
+
+    const table = document.createElement("table");
+    table.className = "medical-table";
+    table.innerHTML =
+      "<thead><tr><th>分類</th><th>日期</th><th>病症 / 診斷</th><th>備註</th><th></th></tr></thead>";
+    const tbody = document.createElement("tbody");
+    table.appendChild(tbody);
+
+    groupRows.forEach(({ item, index }) => {
+      const tr = document.createElement("tr");
+
+      tr.appendChild(createDisplayCell(inferMedicalCategory(item)));
+      tr.appendChild(createDisplayCell(formatShortDate(item.date)));
+      tr.appendChild(createDisplayCell(item.title));
+      tr.appendChild(createDisplayCell(item.note));
+
+      const actionTd = document.createElement("td");
+
+      const editBtn = document.createElement("button");
+      editBtn.textContent = "編輯";
+      editBtn.className = "edit-btn";
+      editBtn.addEventListener("click", () => {
+        startEdit("medical", index, tr);
+      });
+      actionTd.appendChild(editBtn);
+
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "刪除";
+      delBtn.className = "delete-btn";
+      delBtn.addEventListener("click", () => {
+        allData.medical.splice(index, 1);
+        saveData(allData);
+        renderMedicalList();
+      });
+      actionTd.appendChild(delBtn);
+
+      tr.appendChild(actionTd);
+      tbody.appendChild(tr);
+    });
+
+    container.appendChild(table);
   });
 }
 
@@ -597,7 +858,11 @@ function startEdit(category, index, tr) {
     });
 
     saveData(allData);
-    renderList(category);
+    if (category === "medical") {
+      renderMedicalList(); // 病歷資料改成分類分組顯示，要用專屬的渲染函式
+    } else {
+      renderList(category);
+    }
   });
   actionTd.appendChild(saveBtn);
 
@@ -605,7 +870,11 @@ function startEdit(category, index, tr) {
   cancelBtn.textContent = "取消";
   cancelBtn.className = "delete-btn";
   cancelBtn.addEventListener("click", () => {
-    renderList(category); // 不儲存，直接重畫回原本的資料
+    if (category === "medical") {
+      renderMedicalList(); // 不儲存，直接重畫回原本的資料
+    } else {
+      renderList(category); // 不儲存，直接重畫回原本的資料
+    }
   });
   actionTd.appendChild(cancelBtn);
 
@@ -617,6 +886,10 @@ function renderAll() {
   Object.keys(CONFIG).forEach((category) => {
     if (EXAM_CATEGORIES.includes(category)) {
       return; // 檢查排程改用下面的 renderExamList，合併成同一個表格顯示
+    }
+    if (category === "medical") {
+      renderMedicalList(); // 病歷資料改成依分類分組顯示
+      return;
     }
     renderList(category);
   });
@@ -761,7 +1034,11 @@ function setupForm(category) {
 
     allData[category].push(newItem);
     saveData(allData);
-    renderList(category);
+    if (category === "medical") {
+      renderMedicalList(); // 病歷資料改成依分類分組顯示
+    } else {
+      renderList(category);
+    }
 
     form.reset(); // 清空表單，方便繼續新增下一筆
   });
@@ -845,6 +1122,20 @@ function setupTabs() {
   });
 }
 
+// 「病歷資料」的搜尋區：切換病症分類時，重新畫一次分組表格
+function setupMedicalSearch() {
+  const categorySelect = document.getElementById("medical-search-category");
+  if (!categorySelect) {
+    console.warn("找不到病歷資料的搜尋列元件，已略過搜尋功能設定。");
+    return;
+  }
+
+  categorySelect.addEventListener("change", () => {
+    medicalSearchCategory = categorySelect.value;
+    renderMedicalList();
+  });
+}
+
 // 「檢查排程」的篩選區：切換單據類別或顯示範圍時，重新畫一次合併後的表格
 function setupExamFilters() {
   const categorySelect = document.getElementById("exam-filter-category");
@@ -911,6 +1202,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupTabs();
   setupPersonSwitcher(); // 設定爸爸／媽媽的人物切換
   setupExamFilters(); // 設定「檢查排程」的篩選區（單據類別、顯示範圍）
+  setupMedicalSearch(); // 設定「病歷資料」的搜尋區（病症分類）
 
   Object.keys(CONFIG).forEach((category) => {
     setupForm(category);
@@ -919,6 +1211,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupVisitSearch(); // 設定看診記錄的日期搜尋功能
 
   importExamSeedDataOnce(); // 匯入檢驗單／檢查單／放射單的初始資料（只做一次）
+  importMedicalSeedDataOnce(); // 匯入病歷資料的初始資料（只做一次）
+  importLtcSeedDataOnce(); // 匯入長照申請進度的初始資料（只做一次）
+  importSeedUpdate20260921Once(); // 補充聽力問題最新進度（只做一次）
 
   // 先把病歷／檢查排程／照顧／長照申請進度畫出來（這些存在 localStorage，讀取很快）
   renderAll();

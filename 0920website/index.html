@@ -42,16 +42,47 @@
     <!-- ===== 病歷資料 ===== -->
     <section id="medical" class="tab-content active">
       <h2>病歷資料</h2>
+
+      <!-- 整體病況摘要：各科病症其實會互相影響，這裡先做一個總結 -->
+      <div class="medical-summary">
+        <strong>整體病況摘要：</strong>
+        失智症患者的腦部退化需要外界刺激，聽力退化會減少刺激，因此耳鼻喉科的聽力問題會影響神經內科的失智狀況；
+        血糖控制不佳會讓腎功能持續惡化，內分泌科的血糖／血壓需特別留意；
+        平時應多安排活動、避免久坐，並留意跌倒風險（曾發生鎖骨骨折）。各科詳細病歷請見下方分類列表。
+      </div>
+
+      <!-- 搜尋區：可以依病症分類篩選，只看某一科的病歷；選「全部」會顯示所有分類 -->
+      <div class="search-bar">
+        <label>病症分類：
+          <select id="medical-search-category">
+            <option value="all" selected>全部</option>
+            <option value="神經內科/失智">神經內科/失智</option>
+            <option value="泌尿科/攝護腺">泌尿科/攝護腺</option>
+            <option value="內分泌科/高血壓血脂糖尿病">內分泌科/高血壓血脂糖尿病</option>
+            <option value="耳鼻喉科/重聽">耳鼻喉科/重聽</option>
+            <option value="脊椎骨科/骨折">脊椎骨科/骨折</option>
+            <option value="其他">其他</option>
+          </select>
+        </label>
+      </div>
+
       <form id="medical-form" class="add-form">
+        <select name="category" required>
+          <option value="">病症分類</option>
+          <option value="神經內科/失智">神經內科/失智</option>
+          <option value="泌尿科/攝護腺">泌尿科/攝護腺</option>
+          <option value="內分泌科/高血壓血脂糖尿病">內分泌科/高血壓血脂糖尿病</option>
+          <option value="耳鼻喉科/重聽">耳鼻喉科/重聽</option>
+          <option value="脊椎骨科/骨折">脊椎骨科/骨折</option>
+        </select>
         <input type="date" name="date" required />
         <input type="text" name="title" placeholder="病症 / 診斷名稱" required />
-        <input type="text" name="note" placeholder="備註（例如：檢查結果、醫囑）" />
+        <textarea name="note" placeholder="備註（例如：檢查結果、醫囑）按 Enter 可換行" rows="2"></textarea>
         <button type="submit">新增紀錄</button>
       </form>
-      <table>
-        <thead><tr><th>日期</th><th>病症 / 診斷</th><th>備註</th><th></th></tr></thead>
-        <tbody id="medical-list"></tbody>
-      </table>
+
+      <!-- 病歷資料依病症分類分組顯示，各分類由 script.js 動態產生表格 -->
+      <div id="medical-groups"></div>
     </section>
 
     <!-- ===== 檢查排程 ===== -->
@@ -127,7 +158,7 @@
       <form id="care-form" class="add-form">
         <input type="date" name="date" required />
         <input type="text" name="content" placeholder="照顧內容（例如：協助洗澡、量血壓）" required />
-        <input type="text" name="note" placeholder="備註" />
+        <textarea name="note" placeholder="備註（按 Enter 可換行）" rows="2"></textarea>
         <button type="submit">新增紀錄</button>
       </form>
       <table>
@@ -148,10 +179,10 @@
           <option value="已完成">已完成</option>
         </select>
         <input type="date" name="date" required />
-        <input type="text" name="note" placeholder="備註（例如：聯絡窗口、待補文件）" />
+        <textarea name="note" placeholder="備註（例如：聯絡窗口、待補文件）按 Enter 可換行" rows="2"></textarea>
         <button type="submit">新增項目</button>
       </form>
-      <table>
+      <table class="ltc-table">
         <thead><tr><th>申請項目</th><th>狀態</th><th>日期</th><th>備註</th><th></th></tr></thead>
         <tbody id="ltc-list"></tbody>
       </table>
@@ -178,7 +209,7 @@
           <option value="書">書</option>
           <option value="沛">沛</option>
         </select>
-        <input type="text" name="note" placeholder="備註" />
+        <textarea name="note" placeholder="備註（按 Enter 可換行）" rows="2"></textarea>
         <button type="submit">新增紀錄</button>
       </form>
       <table>

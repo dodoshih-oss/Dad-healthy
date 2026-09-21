@@ -228,12 +228,15 @@ main {
 }
 
 .add-form input,
-.add-form select {
+.add-form select,
+.add-form textarea {
   flex: 1 1 150px;
   padding: 8px;
   border: 1px solid #ccc;
   border-radius: 6px;
   font-size: 14px;
+  font-family: inherit; /* textarea 預設字型跟其他欄位不同，這裡讓它統一 */
+  resize: vertical; /* 備註欄位可以讓使用者自己拉高，方便打長一點的內容 */
 }
 
 .add-form button {
@@ -262,6 +265,7 @@ th, td {
   border-bottom: 1px solid #eee;
   text-align: left;
   word-break: break-word;
+  white-space: pre-wrap; /* 保留備註裡使用者按 Enter 換行的效果 */
 }
 
 /* 看診時間表：日期、時間欄位放寬，不要被擠到換行；醫院/科別欄位縮小，資料多時可以換行 */
@@ -275,6 +279,83 @@ th, td {
 .visit-table th:nth-child(3),
 .visit-table td:nth-child(3) {
   max-width: 120px;
+  word-break: break-word;
+}
+
+/* 病歷資料：欄位順序是「分類、日期、病症/診斷、備註」
+   固定欄寬，讓每個分類各自的表格欄寬都統一、對齊一致 */
+.medical-table {
+  table-layout: fixed;
+}
+
+.medical-table th:nth-child(1),
+.medical-table td:nth-child(1) {
+  width: 18%;
+}
+
+.medical-table th:nth-child(2),
+.medical-table td:nth-child(2) {
+  width: 10%;
+  white-space: nowrap;
+}
+
+.medical-table th:nth-child(3),
+.medical-table td:nth-child(3) {
+  width: 24%;
+}
+
+.medical-table th:nth-child(4),
+.medical-table td:nth-child(4) {
+  width: 38%;
+}
+
+.medical-table th:nth-child(5),
+.medical-table td:nth-child(5) {
+  width: 10%;
+}
+
+.medical-table th:nth-child(1),
+.medical-table td:nth-child(1),
+.medical-table th:nth-child(3),
+.medical-table td:nth-child(3),
+.medical-table th:nth-child(4),
+.medical-table td:nth-child(4) {
+  word-break: break-word;
+}
+
+/* 病歷資料的整體摘要區塊 */
+.medical-summary {
+  background-color: #eaf3ec;
+  border-left: 4px solid #4a7c59;
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* 病歷資料每個分類的標題 */
+.medical-group-title {
+  color: #4a7c59;
+  margin: 20px 0 8px 0;
+}
+
+.medical-group-title:first-of-type {
+  margin-top: 0;
+}
+
+/* 長照申請進度：日期欄位不要換行，其他欄位資料多時可以換行 */
+.ltc-table th:nth-child(3),
+.ltc-table td:nth-child(3) {
+  white-space: nowrap;
+}
+
+.ltc-table th:nth-child(1),
+.ltc-table td:nth-child(1),
+.ltc-table th:nth-child(2),
+.ltc-table td:nth-child(2),
+.ltc-table th:nth-child(4),
+.ltc-table td:nth-child(4) {
   word-break: break-word;
 }
 
