@@ -1,8 +1,8 @@
 // ========================================
 // 爸媽的照顧網站 - script.js
-// 病歷／檢查排程／照顧／長照申請進度：存在瀏覽器的 localStorage 裡
-// 看診時間表：改成連線 Supabase 資料庫（test0920 專案），
-//           這樣換一台電腦打開網站，看診時間表也會是最新的
+// 看診時間表／病歷資料／長照申請進度／需要購買清單：都連線 Supabase 資料庫（test0920 專案），
+//           這樣不管用哪一台電腦或手機打開網站，看到的都是同一份最新資料
+// 檢查排程／照顧記錄：還是存在瀏覽器的 localStorage 裡
 // 網站同時記錄「爸爸」跟「媽媽」的資料，每一筆資料都有 person 欄位標記，
 // 點上方照片切換人物時，畫面只會顯示那個人的資料
 // ========================================
@@ -99,6 +99,107 @@ async function refreshVisitList() {
   renderList("visit");
 }
 
+// ---------------------------------------
+// 病歷資料／長照申請進度／需要購買清單：也改成連線 Supabase（test0920 專案）
+// 這三個分類的資料表欄位名稱跟網頁上用的欄位名稱完全一樣（category、date、title、
+// note、item、status、purchased、person），所以不需要另外寫轉換函式，
+// 直接把 Supabase 讀回來的資料當作 allData[category] 使用即可
+// ---------------------------------------
+
+// 這三個分類改成連線 Supabase，不再存 localStorage
+const SUPABASE_SYNCED_CATEGORIES = ["medical", "ltc", "shopping"];
+
+// 對應到 Supabase 裡的資料表名稱
+const SUPABASE_TABLE_NAME = {
+  medical: "medical_records",
+  ltc: "ltc_records",
+  shopping: "shopping_items",
+};
+
+// 從 Supabase 讀取「目前選擇的人物」在某個分類底下的資料（依新增順序排序）
+async function fetchCategoryFromSupabase(category) {
+  if (!supabaseClient) {
+    return [];
+  }
+
+  const { data, error } = await supabaseClient
+    .from(SUPABASE_TABLE_NAME[category])
+    .select("*")
+    .eq("person", currentPerson)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error(`讀取「${category}」資料失敗：`, error);
+    return [];
+  }
+
+  return data;
+}
+
+// 重新從 Supabase 抓某個分類的最新資料，並且重畫對應的表格
+async function refreshCategoryList(category) {
+  allData[category] = await fetchCategoryFromSupabase(category);
+
+  if (category === "medical") {
+    renderMedicalList();
+  } else if (category === "shopping") {
+    renderShoppingList();
+  } else {
+    renderList(category);
+  }
+}
+
+// 新增一筆資料到 Supabase（medical／ltc／shopping 共用）
+async function insertCategoryItem(category, newItem) {
+  if (!supabaseClient) {
+    alert("目前無法連線到 Supabase，請確認網路連線後再試一次。");
+    return;
+  }
+  const { error } = await supabaseClient.from(SUPABASE_TABLE_NAME[category]).insert(newItem);
+  if (error) {
+    console.error(`新增「${category}」資料失敗：`, error);
+    alert("新增失敗，請稍後再試。");
+    return;
+  }
+  await refreshCategoryList(category);
+}
+
+// 更新一筆資料到 Supabase（medical／ltc／shopping 共用），依 id 找到那一列
+async function updateCategoryItem(category, item, changes) {
+  if (!supabaseClient) {
+    alert("目前無法連線到 Supabase，請確認網路連線後再試一次。");
+    return;
+  }
+  const { error } = await supabaseClient
+    .from(SUPABASE_TABLE_NAME[category])
+    .update(changes)
+    .eq("id", item.id);
+  if (error) {
+    console.error(`更新「${category}」資料失敗：`, error);
+    alert("更新失敗，請稍後再試。");
+    return;
+  }
+  await refreshCategoryList(category);
+}
+
+// 刪除一筆資料（medical／ltc／shopping 共用），依 id 找到那一列
+async function deleteCategoryItem(category, item) {
+  if (!supabaseClient) {
+    alert("目前無法連線到 Supabase，請確認網路連線後再試一次。");
+    return;
+  }
+  const { error } = await supabaseClient
+    .from(SUPABASE_TABLE_NAME[category])
+    .delete()
+    .eq("id", item.id);
+  if (error) {
+    console.error(`刪除「${category}」資料失敗：`, error);
+    alert("刪除失敗，請稍後再試。");
+    return;
+  }
+  await refreshCategoryList(category);
+}
+
 // 照顧者下拉選單的選項（第一個空字串代表「留白」）
 const CAREGIVER_OPTIONS = ["", "甄", "瑤", "慈", "書", "沛"];
 
@@ -161,7 +262,7 @@ const examFilters = {
   status: "valid",
 };
 
-// 儲存在 localStorage 的 key 名稱（病歷／用藥／照顧／長照申請進度會用到）
+// 儲存在 localStorage 的 key 名稱（檢查排程／照顧記錄會用到，其他分類都改連線 Supabase）
 const STORAGE_KEY = "dadCareData";
 
 // 各分類的欄位設定：
@@ -340,196 +441,6 @@ function importExamSeedDataOnce() {
 
   saveData(allData);
   localStorage.setItem(EXAM_SEED_FLAG_KEY, "true"); // 標記已匯入
-}
-
-// ---------------------------------------
-// 病歷資料的初始資料（爸爸的慢性病與近況整理）
-// 只在「第一次開啟網站」時自動加入一次，之後不會重複匯入，
-// 也不會蓋掉使用者自己新增／刪除／編輯過的資料
-// ---------------------------------------
-
-const MEDICAL_SEED_FLAG_KEY = "dadCareSeeded_medical_20260921";
-
-const MEDICAL_SEED_DATA = [
-  {
-    category: "內分泌科/高血壓血脂糖尿病",
-    date: "2026-09-21",
-    title: "高血壓",
-    note: "長期慢性病，回診時定期追蹤血壓與用藥",
-    person: "dad",
-  },
-  {
-    category: "內分泌科/高血壓血脂糖尿病",
-    date: "2026-09-21",
-    title: "高血糖／糖尿病",
-    note: "血糖控制不佳，腎功能持續惡化（肌酸酐：5月1.5、7月1.9，標準應低於1.2）。醫囑：忌甜食、勿吃太飽、多喝水、增加運動",
-    person: "dad",
-  },
-  {
-    category: "泌尿科/攝護腺",
-    date: "2026-09-21",
-    title: "攝護腺／泌尿問題",
-    note: "長期於泌尿科（林孝友醫師）追蹤治療",
-    person: "dad",
-  },
-  {
-    category: "神經內科/失智",
-    date: "2026-09-21",
-    title: "失智症（等級待補）",
-    note: "腦部退化需要外界刺激，聽力退化會減少刺激；正在申請身心障礙（聽力）鑑定，失智症等級尚待補充",
-    person: "dad",
-  },
-  {
-    category: "脊椎骨科/骨折",
-    date: "2026-09-23",
-    title: "跌倒－左鎖骨骨折",
-    note: "跌倒導致鎖骨骨折，9/23住院準備、9/24手術、9/25出院（詳見看診時間表）",
-    person: "dad",
-  },
-  {
-    category: "神經內科/失智",
-    date: "2026-09-03",
-    title: "9/3回診紀錄（神經內科．許昭俊醫師）",
-    note: "白天嗜睡是因為活動量不足、不是藥物副作用，醫師已開立3個月連續處方箋，暫不需重做MRI。照護重點：①忌甜食、勿吃太飽、多喝水 ②儘速掛耳鼻喉科做聽力檢查、評估助聽器（聽力退化會減少腦部刺激）③白天多安排活動，減少久坐看電視或臥床",
-    person: "dad",
-  },
-];
-
-function importMedicalSeedDataOnce() {
-  const alreadySeeded = localStorage.getItem(MEDICAL_SEED_FLAG_KEY);
-  if (alreadySeeded) {
-    return; // 已經匯入過了，不再重複
-  }
-
-  MEDICAL_SEED_DATA.forEach((item) => {
-    allData.medical.push(item);
-  });
-
-  saveData(allData);
-  localStorage.setItem(MEDICAL_SEED_FLAG_KEY, "true"); // 標記已匯入
-}
-
-// ---------------------------------------
-// 長照申請進度的初始資料（爸爸的聽力鑑定／助聽器補助申請）
-// ---------------------------------------
-
-const LTC_SEED_FLAG_KEY = "dadCareSeeded_ltc_20260921";
-
-const LTC_SEED_DATA = [
-  {
-    item: "身心障礙（聽力）鑑定與助聽器補助申請",
-    status: "審核中",
-    date: "2026-09-24",
-    note: "9/18已完成第一次純音聽力檢查；9/24耳鼻喉科複診做第二次純音聽力檢查＋聽性腦幹反應檢查（需與第一次間隔一週，且在三個月內）。之後需準備1吋照片3張（近三個月）、身分證明文件、印章，至戶籍地公所社會課領取殘障鑑定表。助聽器補助另需輔具評估報告書、發票、保固書",
-    person: "dad",
-  },
-];
-
-function importLtcSeedDataOnce() {
-  const alreadySeeded = localStorage.getItem(LTC_SEED_FLAG_KEY);
-  if (alreadySeeded) {
-    return; // 已經匯入過了，不再重複
-  }
-
-  LTC_SEED_DATA.forEach((item) => {
-    allData.ltc.push(item);
-  });
-
-  saveData(allData);
-  localStorage.setItem(LTC_SEED_FLAG_KEY, "true"); // 標記已匯入
-}
-
-// ---------------------------------------
-// 補充資料（2026-09-21）：爸爸的聽力問題最新進度
-// 用新的旗標，就算之前已經匯入過一次舊資料，這批補充資料還是會加進去一次
-// ---------------------------------------
-
-const SEED_UPDATE_20260921_FLAG_KEY = "dadCareSeeded_update_20260921";
-
-function importSeedUpdate20260921Once() {
-  const alreadySeeded = localStorage.getItem(SEED_UPDATE_20260921_FLAG_KEY);
-  if (alreadySeeded) {
-    return; // 已經匯入過了，不再重複
-  }
-
-  allData.medical.push({
-    category: "耳鼻喉科/重聽",
-    date: "2026-09-21",
-    title: "聽力問題（耳鼻喉科追蹤）",
-    note: "耳鼻喉科追蹤聽力退化問題。已完成第一次聽力檢測（9/14），第二次聽力檢測時間已調整為10/12（原訂9/24）。目前先借用醫院提供的助聽器試用，同時已至Costco門市評估購買助聽器",
-    person: "dad",
-  });
-
-  allData.ltc.push({
-    item: "助聽器試用與採購評估",
-    status: "審核中",
-    date: "2026-10-12",
-    note: "9/14已完成第一次純音聽力檢測；第二次聽力檢測（純音聽力＋聽性腦幹反應檢查）已改期至10/12（原訂9/24），需與第一次間隔一週內三個月完成。目前先借用醫院的助聽器試用，同時已至Costco評估購買，Costco表示補助申請約需2個月。後續需準備1吋照片3張（近三個月）、身分證明文件、印章，至戶籍地公所社會課領取殘障鑑定表；助聽器補助另需輔具評估報告書、發票、保固書",
-    person: "dad",
-  });
-
-  saveData(allData);
-  localStorage.setItem(SEED_UPDATE_20260921_FLAG_KEY, "true"); // 標記已匯入
-}
-
-// ---------------------------------------
-// 補充資料（2026-09-21 下午）：Costco 助聽器廠牌比較，內部先同步、尚未決議
-// 用新的旗標，就算之前已經匯入過一次舊資料，這批補充資料還是會加進去一次
-// ---------------------------------------
-
-const SEED_UPDATE_20260921B_FLAG_KEY = "dadCareSeeded_update_20260921b";
-
-function importSeedUpdate20260921BOnce() {
-  const alreadySeeded = localStorage.getItem(SEED_UPDATE_20260921B_FLAG_KEY);
-  if (alreadySeeded) {
-    return; // 已經匯入過了，不再重複
-  }
-
-  allData.ltc.push({
-    item: "助聽器廠牌比較（Costco．待決議）",
-    status: "待決議",
-    date: "2026-09-21",
-    note:
-      "尚未決議，先內部同步資訊。目前 Costco 主推三個品牌的選配式高階助聽器，現場售價皆為 42,999 元起／一對（含兩支助聽器＋一個充電盒）：\n" +
-      "1. Philips 飛利浦（母公司 Demant 集團，與 Oticon 同源）：強調AI語音處理技術，吵雜環境下語音辨識度表現極佳\n" +
-      "2. Jabra 捷波朗（母公司 GN 集團，與 ReSound 同源）：藍牙連線能力強，支援 iPhone 與 Android 直連，音質自然\n" +
-      "3. Rexton 力斯頓（母公司 WS Audiology，與 Signia 同源）：結構堅固、耐用性高，適合運動量大或經常出汗的使用者\n" +
-      "備註：Costco 自有品牌 Kirkland Signature（KS）助聽器目前在許多分店已暫停更新或缺貨，Costco 表示上述三品牌硬體效能等同市面價值雙倍以上的醫療級產品。",
-    person: "dad",
-  });
-
-  saveData(allData);
-  localStorage.setItem(SEED_UPDATE_20260921B_FLAG_KEY, "true"); // 標記已匯入
-}
-
-// ---------------------------------------
-// 需要購買清單的初始資料
-// 只在「第一次開啟網站」時自動加入一次，之後不會重複匯入，
-// 也不會蓋掉使用者自己新增／刪除／編輯（含打勾）過的資料
-// ---------------------------------------
-
-const SHOPPING_SEED_FLAG_KEY = "dadCareSeeded_shopping_20260921";
-
-const SHOPPING_SEED_DATA = [
-  { item: "鎖骨八字帶", purchased: false, note: "", person: "dad" },
-  { item: "尿布", purchased: false, note: "", person: "dad" },
-  { item: "防水尿墊", purchased: false, note: "", person: "dad" },
-  { item: "耳機（助聽器）", purchased: false, note: "", person: "dad" },
-  { item: "血糖儀／血糖試紙", purchased: false, note: "", person: "dad" },
-];
-
-function importShoppingSeedDataOnce() {
-  const alreadySeeded = localStorage.getItem(SHOPPING_SEED_FLAG_KEY);
-  if (alreadySeeded) {
-    return; // 已經匯入過了，不再重複
-  }
-
-  SHOPPING_SEED_DATA.forEach((item) => {
-    allData.shopping.push(item);
-  });
-
-  saveData(allData);
-  localStorage.setItem(SHOPPING_SEED_FLAG_KEY, "true"); // 標記已匯入
 }
 
 // ---------------------------------------
@@ -761,7 +672,11 @@ function renderList(category) {
       const delBtn = document.createElement("button");
       delBtn.textContent = "刪除";
       delBtn.className = "delete-btn";
-      delBtn.addEventListener("click", () => {
+      delBtn.addEventListener("click", async () => {
+        if (SUPABASE_SYNCED_CATEGORIES.includes(category)) {
+          await deleteCategoryItem(category, item); // 長照申請進度：改成連線 Supabase 刪除
+          return;
+        }
         allData[category].splice(index, 1);
         saveData(allData);
         renderList(category);
@@ -878,10 +793,8 @@ function renderMedicalList() {
       const delBtn = document.createElement("button");
       delBtn.textContent = "刪除";
       delBtn.className = "delete-btn";
-      delBtn.addEventListener("click", () => {
-        allData.medical.splice(index, 1);
-        saveData(allData);
-        renderMedicalList();
+      delBtn.addEventListener("click", async () => {
+        await deleteCategoryItem("medical", item); // 改成連線 Supabase 刪除
       });
       actionTd.appendChild(delBtn);
 
@@ -913,9 +826,9 @@ function renderShoppingList() {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = !!item.purchased;
-    checkbox.addEventListener("change", () => {
-      item.purchased = checkbox.checked;
-      saveData(allData);
+    checkbox.addEventListener("change", async () => {
+      // 直接更新 Supabase，不用進到編輯模式
+      await updateCategoryItem("shopping", item, { purchased: checkbox.checked });
     });
     checkTd.appendChild(checkbox);
     tr.appendChild(checkTd);
@@ -936,10 +849,8 @@ function renderShoppingList() {
     const delBtn = document.createElement("button");
     delBtn.textContent = "刪除";
     delBtn.className = "delete-btn";
-    delBtn.addEventListener("click", () => {
-      allData.shopping.splice(index, 1);
-      saveData(allData);
-      renderShoppingList();
+    delBtn.addEventListener("click", async () => {
+      await deleteCategoryItem("shopping", item); // 改成連線 Supabase 刪除
     });
     actionTd.appendChild(delBtn);
 
@@ -1027,22 +938,25 @@ function startEdit(category, index, tr) {
   const saveBtn = document.createElement("button");
   saveBtn.textContent = "儲存";
   saveBtn.className = "edit-btn";
-  saveBtn.addEventListener("click", () => {
+  saveBtn.addEventListener("click", async () => {
     // 把每個輸入框目前的值讀出來，更新回資料裡
     // 打勾方塊要讀 checked，不是 value
+    const changes = {};
     const inputs = tr.querySelectorAll("[data-field-key]");
     inputs.forEach((input) => {
-      item[input.dataset.fieldKey] = input.type === "checkbox" ? input.checked : input.value;
+      const value = input.type === "checkbox" ? input.checked : input.value;
+      item[input.dataset.fieldKey] = value;
+      changes[input.dataset.fieldKey] = value;
     });
 
-    saveData(allData);
-    if (category === "medical") {
-      renderMedicalList(); // 病歷資料改成分類分組顯示，要用專屬的渲染函式
-    } else if (category === "shopping") {
-      renderShoppingList(); // 需要購買清單也是專屬的渲染函式
-    } else {
-      renderList(category);
+    if (SUPABASE_SYNCED_CATEGORIES.includes(category)) {
+      // 病歷資料／長照申請進度／需要購買清單：改成連線 Supabase 更新
+      await updateCategoryItem(category, item, changes);
+      return;
     }
+
+    saveData(allData);
+    renderList(category);
   });
   actionTd.appendChild(saveBtn);
 
@@ -1050,12 +964,13 @@ function startEdit(category, index, tr) {
   cancelBtn.textContent = "取消";
   cancelBtn.className = "delete-btn";
   cancelBtn.addEventListener("click", () => {
+    // 不儲存，直接重畫回原本的資料
     if (category === "medical") {
-      renderMedicalList(); // 不儲存，直接重畫回原本的資料
+      renderMedicalList();
     } else if (category === "shopping") {
-      renderShoppingList(); // 不儲存，直接重畫回原本的資料
+      renderShoppingList();
     } else {
-      renderList(category); // 不儲存，直接重畫回原本的資料
+      renderList(category);
     }
   });
   actionTd.appendChild(cancelBtn);
@@ -1069,17 +984,17 @@ function renderAll() {
     if (EXAM_CATEGORIES.includes(category)) {
       return; // 檢查排程改用下面的 renderExamList，合併成同一個表格顯示
     }
-    if (category === "medical") {
-      renderMedicalList(); // 病歷資料改成依分類分組顯示
-      return;
-    }
-    if (category === "shopping") {
-      renderShoppingList(); // 需要購買清單改用專屬的渲染函式
-      return;
+    if (SUPABASE_SYNCED_CATEGORIES.includes(category)) {
+      return; // 病歷資料／長照申請進度／需要購買清單改連線 Supabase，用 refreshAllSupabaseCategories 處理
     }
     renderList(category);
   });
   renderExamList();
+}
+
+// 重新從 Supabase 抓「病歷資料／長照申請進度／需要購買清單」這三個分類的最新資料
+async function refreshAllSupabaseCategories() {
+  await Promise.all(SUPABASE_SYNCED_CATEGORIES.map((category) => refreshCategoryList(category)));
 }
 
 // ---------------------------------------
@@ -1195,8 +1110,14 @@ function setupForm(category) {
 
     // 把表單裡每個欄位的值抓出來，存成一個物件
     CONFIG[category].fields.forEach((field) => {
+      if (field.type === "checkbox") {
+        return; // 新增表單裡沒有「是否已購買」的打勾方塊，新項目一律預設「未購買」
+      }
       newItem[field.key] = formData.get(field.key) || "";
     });
+    if (category === "shopping") {
+      newItem.purchased = false; // 新增的購買項目，預設都是還沒買
+    }
     newItem.person = currentPerson; // 標記這筆資料是「目前選擇的人物」的資料
 
     if (category === "visit") {
@@ -1218,15 +1139,16 @@ function setupForm(category) {
       return;
     }
 
+    if (SUPABASE_SYNCED_CATEGORIES.includes(category)) {
+      // 病歷資料／長照申請進度／需要購買清單：新增到 Supabase
+      await insertCategoryItem(category, newItem);
+      form.reset();
+      return;
+    }
+
     allData[category].push(newItem);
     saveData(allData);
-    if (category === "medical") {
-      renderMedicalList(); // 病歷資料改成依分類分組顯示
-    } else if (category === "shopping") {
-      renderShoppingList(); // 需要購買清單改用專屬的渲染函式
-    } else {
-      renderList(category);
-    }
+    renderList(category);
 
     form.reset(); // 清空表單，方便繼續新增下一筆
   });
@@ -1368,15 +1290,16 @@ function setupPersonSwitcher() {
       buttons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
 
-      // 重新畫出病歷／檢查排程／照顧／長照申請進度（這些存在 localStorage，切換很快）
+      // 重新畫出檢查排程／照顧記錄（這些還是存在 localStorage，切換很快）
       renderAll();
 
-      // 看診時間表存在 Supabase，需要重新抓「這個人」的資料
+      // 看診時間表／病歷資料／長照申請進度／需要購買清單都存在 Supabase，
+      // 需要重新抓「這個人」的資料
       if (supabaseClient) {
         const personName = currentPerson === "dad" ? "爸爸" : "媽媽";
-        setVisitSyncStatus(`看診時間表讀取中…（${personName}）`);
-        await refreshVisitList();
-        setVisitSyncStatus(`✅ 看診時間表已連線 Supabase（${personName}）`);
+        setVisitSyncStatus(`資料讀取中…（${personName}）`);
+        await Promise.all([refreshVisitList(), refreshAllSupabaseCategories()]);
+        setVisitSyncStatus(`✅ 已連線 Supabase（${personName}）`);
       }
     });
   });
@@ -1398,22 +1321,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   setupVisitSearch(); // 設定看診記錄的日期搜尋功能
 
-  importExamSeedDataOnce(); // 匯入檢驗單／檢查單／放射單的初始資料（只做一次）
-  importMedicalSeedDataOnce(); // 匯入病歷資料的初始資料（只做一次）
-  importLtcSeedDataOnce(); // 匯入長照申請進度的初始資料（只做一次）
-  importSeedUpdate20260921Once(); // 補充聽力問題最新進度（只做一次）
-  importSeedUpdate20260921BOnce(); // 補充 Costco 助聽器廠牌比較資訊，待決議（只做一次）
-  importShoppingSeedDataOnce(); // 匯入需要購買清單的初始資料（只做一次）
+  importExamSeedDataOnce(); // 匯入檢驗單／檢查單／放射單的初始資料（只做一次，還是存在 localStorage）
 
-  // 先把病歷／檢查排程／照顧／長照申請進度畫出來（這些存在 localStorage，讀取很快）
+  // 先把檢查排程／照顧記錄畫出來（這些還是存在 localStorage，讀取很快）
   renderAll();
 
-  // 看診記錄改成連線 Supabase，需要一點時間讀取，讀取完再畫一次
+  // 看診時間表／病歷資料／長照申請進度／需要購買清單都改成連線 Supabase，
+  // 需要一點時間讀取，讀取完再畫出來
   if (supabaseClient) {
-    setVisitSyncStatus("看診記錄讀取中…");
-    await refreshVisitList();
-    setVisitSyncStatus("✅ 看診記錄已連線 Supabase（test0920 專案）");
+    setVisitSyncStatus("資料讀取中…");
+    await Promise.all([refreshVisitList(), refreshAllSupabaseCategories()]);
+    setVisitSyncStatus("✅ 已連線 Supabase（test0920 專案）");
   } else {
-    setVisitSyncStatus("⚠️ Supabase 函式庫載入失敗，看診記錄暫時無法使用，請確認網路連線後重新整理頁面。");
+    setVisitSyncStatus("⚠️ Supabase 函式庫載入失敗，病歷資料／看診時間表／長照申請進度／購物清單暫時無法使用，請確認網路連線後重新整理頁面。");
   }
 });
