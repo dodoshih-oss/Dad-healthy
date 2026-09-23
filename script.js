@@ -501,6 +501,58 @@ const searchFilters = {};
 // 病歷資料目前選擇的搜尋分類，"all" 代表全部都顯示
 let medicalSearchCategory = "all";
 
+// ---------------------------------------
+// 日期排序：每個頁簽的表頭都可以點「日期」文字切換升冪／降冪
+// ---------------------------------------
+
+// 各分類目前的日期排序方向，"desc" 是新到舊（或遠到近），"asc" 是舊到新（或近到遠）
+// 長照申請進度預設「desc」：從最遠的日期開始，往過去排
+const dateSortDirection = {
+  medical: "desc",
+  exam: "desc",
+  visit: "asc",
+  care: "desc",
+  ltc: "desc",
+  advance: "desc",
+};
+
+// 依目前的排序方向，回傳表頭要顯示的箭頭符號
+function dateSortArrow(category) {
+  return dateSortDirection[category] === "asc" ? " ▲" : " ▼";
+}
+
+// 點一下「日期」表頭，切換升冪／降冪，並重新畫出對應的表格
+function toggleDateSort(category) {
+  dateSortDirection[category] = dateSortDirection[category] === "asc" ? "desc" : "asc";
+
+  if (category === "medical") {
+    renderMedicalList();
+  } else if (category === "exam") {
+    renderExamList();
+  } else {
+    renderList(category);
+  }
+}
+
+// 更新表頭上的箭頭符號，顯示目前是升冪還是降冪（每次重畫表格都要呼叫一次）
+function updateDateSortHeaderArrow(category) {
+  const th = document.getElementById(category + "-date-header");
+  if (th) {
+    th.textContent = "日期" + dateSortArrow(category);
+  }
+}
+
+// 幫「日期」表頭加上可以點擊排序的功能（只在網頁載入時設定一次）
+function setupDateSortHeader(category) {
+  const th = document.getElementById(category + "-date-header");
+  if (!th) {
+    return;
+  }
+  th.addEventListener("click", () => {
+    toggleDateSort(category);
+  });
+}
+
 // 判斷這筆資料是不是「目前選擇的人物」的資料
 // 舊資料沒有標記 person 欄位，一律當作是爸爸的資料
 function matchesPersonFilter(item) {
@@ -508,7 +560,7 @@ function matchesPersonFilter(item) {
   return itemPerson === currentPerson;
 }
 
-// 手機螢幕比較小，日期只顯示「月/日」，不顯示年份
+// 日期格式：完整顯示「年/月/日」，例如 "2026/09/23"
 // 支援 "2026-09-23" 或 "2026-09-23T15:01" 這兩種格式
 function formatShortDate(rawValue) {
   if (!rawValue) {
@@ -519,13 +571,13 @@ function formatShortDate(rawValue) {
   if (pieces.length !== 3) {
     return rawValue; // 格式不如預期，就直接顯示原始值，避免顯示錯誤
   }
-  return `${pieces[1]}/${pieces[2]}`; // "2026-09-23" -> "09/23"
+  return `${pieces[0]}/${pieces[1]}/${pieces[2]}`; // "2026-09-23" -> "2026/09/23"
 }
 
 // 星期幾的中文名稱，索引對應 JavaScript 的 Date.getDay()（0 是星期日）
 const WEEKDAY_LABELS = ["日", "一", "二", "三", "四", "五", "六"];
 
-// 看診時間表用的日期格式：月/日 加上星期幾，例如 "9/23(三)"
+// 看診時間表用的日期格式：年/月/日 加上星期幾，例如 "2026/9/23(三)"
 // 支援 "2026-09-23" 或 "2026-09-23T15:01" 這兩種格式
 function formatDateWithWeekday(rawValue) {
   if (!rawValue) {
@@ -543,7 +595,7 @@ function formatDateWithWeekday(rawValue) {
   const dateObj = new Date(year, month - 1, day);
   const weekday = WEEKDAY_LABELS[dateObj.getDay()];
 
-  return `${month}/${day}(${weekday})`; // 不補零，例如 "9/23(三)"
+  return `${year}/${month}/${day}(${weekday})`; // 月、日不補零，例如 "2026/9/23(三)"
 }
 
 // 取得今天的日期字串（YYYY-MM-DD），用來判斷資料是否過期
@@ -628,18 +680,24 @@ function renderList(category) {
   rows = rows.filter((row) => matchesPersonFilter(row.item)); // 只顯示目前選擇的人物的資料
   rows = rows.filter((row) => matchesSearchFilter(category, row.item)); // 看診時間表的日期起迄、照顧者篩選
 
-  if (category === "medical") {
-    // 病歷資料：依日期由新到舊排序
-    rows.sort((a, b) => (b.item.date || "").localeCompare(a.item.date || ""));
+  // 依「日期」欄位排序，方向由點擊表頭決定（見 dateSortDirection）
+  if (fields.some((field) => field.key === "date")) {
+    const direction = dateSortDirection[category] || "desc";
+    rows.sort((a, b) => {
+      const cmp = (a.item.date || "").localeCompare(b.item.date || "");
+      return direction === "asc" ? cmp : -cmp;
+    });
   }
+
+  updateDateSortHeaderArrow(category);
 
   rows.forEach(({ item, index }) => {
     const tr = document.createElement("tr");
 
     // 一般顯示模式：每個欄位放一個純文字儲存格
     fields.forEach((field) => {
-      // 看診時間表的日期欄位：顯示「月/日(星期幾)」，例如 "9/23(三)"
-      // 病歷資料的日期欄位：只顯示「月/日」，不顯示年份
+      // 看診時間表的日期欄位：顯示「年/月/日(星期幾)」，例如 "2026/9/23(三)"
+      // 病歷資料、長照申請進度的日期欄位：顯示「年/月/日」
       let displayValue = item[field.key];
       if (field.key === "date") {
         if (category === "visit") {
@@ -758,7 +816,12 @@ function renderMedicalList() {
       return; // 這個分類目前沒有資料，就不顯示這一區塊
     }
 
-    groupRows.sort((a, b) => (b.item.date || "").localeCompare(a.item.date || ""));
+    // 依目前選擇的排序方向排序（預設新到舊，可以點表頭「日期」切換）
+    const medicalDirection = dateSortDirection.medical || "desc";
+    groupRows.sort((a, b) => {
+      const cmp = (a.item.date || "").localeCompare(b.item.date || "");
+      return medicalDirection === "asc" ? cmp : -cmp;
+    });
 
     const groupTitle = document.createElement("h3");
     groupTitle.className = "medical-group-title";
@@ -767,8 +830,15 @@ function renderMedicalList() {
 
     const table = document.createElement("table");
     table.className = "medical-table";
-    table.innerHTML =
-      "<thead><tr><th>分類</th><th>日期</th><th>病症 / 診斷</th><th>備註</th><th></th></tr></thead>";
+    table.innerHTML = "<thead><tr><th>分類</th><th class=\"date-sort-header\">日期</th><th>病症 / 診斷</th><th>備註</th><th></th></tr></thead>";
+
+    // 「日期」表頭可以點擊切換升冪／降冪，並顯示目前排序方向的箭頭
+    const dateHeader = table.querySelector("thead th.date-sort-header");
+    dateHeader.textContent = "日期" + dateSortArrow("medical");
+    dateHeader.addEventListener("click", () => {
+      toggleDateSort("medical");
+    });
+
     const tbody = document.createElement("tbody");
     table.appendChild(tbody);
 
@@ -872,7 +942,7 @@ function startEditVisitRow(index, tr) {
     if (editableKeys.includes(field.key)) {
       tr.appendChild(createEditCell(field, item[field.key]));
     } else {
-      // 唯讀欄位：日期一樣顯示成「月/日(星期幾)」
+      // 唯讀欄位：日期一樣顯示成「年/月/日(星期幾)」
       const displayValue =
         field.key === "date" ? formatDateWithWeekday(item[field.key]) : item[field.key];
       tr.appendChild(createDisplayCell(displayValue));
@@ -1066,12 +1136,16 @@ function renderExamList() {
   );
   rows = rows.filter((row) => matchesExamStatusFilter(row.category, row.item));
 
-  // 依「有效期限」由遠到近排序
+  // 依「有效期限」排序，方向由點擊表頭決定（見 dateSortDirection）
+  const examDirection = dateSortDirection.exam || "desc";
   rows.sort((a, b) => {
     const dateA = getExamRefDate(a.category, a.item);
     const dateB = getExamRefDate(b.category, b.item);
-    return dateB.localeCompare(dateA);
+    const cmp = dateA.localeCompare(dateB);
+    return examDirection === "asc" ? cmp : -cmp;
   });
+
+  updateDateSortHeaderArrow("exam");
 
   rows.forEach(({ category, item, index }) => {
     const tr = document.createElement("tr");
@@ -1306,6 +1380,283 @@ function setupPersonSwitcher() {
 }
 
 // ---------------------------------------
+// 拍照新增：檢查排程、看診時間表都可以拍照，自動辨識文字並幫忙填欄位
+// 用 Tesseract.js（從 CDN 載入）直接在瀏覽器裡辨識文字，不需要另外架伺服器
+// 辨識結果只是「參考」，一定會先顯示在表單裡讓使用者確認／修改，
+// 按「確認新增」才會真的存進資料，並且會先檢查有沒有跟現有資料重複
+// ---------------------------------------
+
+let cameraStream = null; // 目前開啟中的相機串流，關閉視窗時要記得停掉
+let cameraTargetTab = null; // 這次拍照是要給哪個頁簽用："exam" 或 "visit"
+
+// 開啟相機視窗，請求使用者的相機權限
+async function openCameraModal(targetTab) {
+  cameraTargetTab = targetTab;
+  const modal = document.getElementById("camera-modal");
+  const video = document.getElementById("camera-video");
+
+  try {
+    // facingMode: "environment" 表示優先使用手機的後鏡頭，比較方便拍文件
+    cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" },
+    });
+  } catch (err) {
+    console.error("開啟相機失敗：", err);
+    alert("無法開啟相機，請確認瀏覽器已允許使用相機權限。");
+    return;
+  }
+
+  video.srcObject = cameraStream;
+  modal.style.display = "flex";
+}
+
+// 關閉相機視窗，並且把相機關掉，避免持續佔用鏡頭
+function closeCameraModal() {
+  document.getElementById("camera-modal").style.display = "none";
+  if (cameraStream) {
+    cameraStream.getTracks().forEach((track) => track.stop());
+    cameraStream = null;
+  }
+}
+
+// 顯示／隱藏「辨識中」提示視窗
+function setOcrLoading(isLoading) {
+  document.getElementById("ocr-loading-modal").style.display = isLoading ? "flex" : "none";
+}
+
+// 顯示「資料重複」提示視窗
+function showDuplicateModal(message) {
+  document.getElementById("duplicate-modal-message").textContent = message;
+  document.getElementById("duplicate-modal").style.display = "flex";
+}
+
+// 從辨識出來的一大段文字裡，找出「日期」「時間」，剩下的文字當作名稱/科別的參考值
+// 支援 "2026-09-23"、"2026/09/23"、"09/23" 這幾種常見格式
+function parseOcrText(text) {
+  const dateMatches = text.match(/\d{2,4}[-/]\d{1,2}[-/]\d{1,2}/g) || [];
+  const timeMatches = text.match(/\d{1,2}:\d{2}/g) || [];
+
+  // 把辨識出來的日期統一轉成 "YYYY-MM-DD"，才能直接填進 <input type="date">
+  function normalizeDate(raw) {
+    const parts = raw.split(/[-/]/);
+    let year = parts[0];
+    let month = parts[1];
+    let day = parts[2];
+    if (parts.length === 2) {
+      // 只辨識到「月/日」，沒有年份，就用今年當年份
+      year = String(new Date().getFullYear());
+      month = parts[0];
+      day = parts[1];
+    }
+    if (year.length === 2) {
+      year = "20" + year; // 兩位數年份，補成西元年
+    }
+    return `${year.padStart(4, "0")}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+  }
+
+  // 找出「看起來不是日期、也不是時間」的第一行文字，當作名稱／科別的參考值
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line);
+  const nameLine =
+    lines.find(
+      (line) => !/^\d{2,4}[-/]\d{1,2}[-/]\d{1,2}$/.test(line) && !/^\d{1,2}:\d{2}$/.test(line)
+    ) || "";
+
+  return {
+    date1: dateMatches[0] ? normalizeDate(dateMatches[0]) : "",
+    date2: dateMatches[1] ? normalizeDate(dateMatches[1]) : "",
+    time: timeMatches[0] || "",
+    name: nameLine,
+  };
+}
+
+// 拍照，並且把照片交給 Tesseract.js 辨識文字（chi_tra 是繁體中文，eng 是英文／數字）
+async function capturePhotoAndRecognize() {
+  const video = document.getElementById("camera-video");
+  const canvas = document.getElementById("camera-canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const targetTab = cameraTargetTab;
+  closeCameraModal();
+  setOcrLoading(true);
+
+  try {
+    const result = await Tesseract.recognize(canvas, "chi_tra+eng");
+    const parsed = parseOcrText(result.data.text);
+    setOcrLoading(false);
+    fillManualFormFromOcr(targetTab, parsed);
+  } catch (err) {
+    setOcrLoading(false);
+    console.error("文字辨識失敗：", err);
+    alert("照片辨識失敗，請直接手動輸入資料。");
+    showManualForm(targetTab);
+  }
+}
+
+// 把辨識結果填進對應頁簽的「確認新增」表單，並且把表單顯示出來
+function fillManualFormFromOcr(targetTab, parsed) {
+  if (targetTab === "visit") {
+    const form = document.getElementById("visit-manual-form");
+    form.elements["date"].value = parsed.date1 || "";
+    form.elements["time"].value = parsed.time || "";
+    form.elements["hospital"].value = parsed.name || "";
+  } else if (targetTab === "exam") {
+    const form = document.getElementById("exam-manual-form");
+    form.elements["name"].value = parsed.name || "";
+    form.elements["date1"].value = parsed.date1 || "";
+    form.elements["date2"].value = parsed.date2 || "";
+  }
+  showManualForm(targetTab);
+}
+
+// 顯示「確認新增」表單，讓使用者檢查／修改辨識結果後再送出
+function showManualForm(targetTab) {
+  const formId = targetTab === "visit" ? "visit-manual-form" : "exam-manual-form";
+  document.getElementById(formId).style.display = "flex";
+}
+
+// 隱藏「確認新增」表單，並且清空裡面的內容
+function hideManualForm(targetTab) {
+  const formId = targetTab === "visit" ? "visit-manual-form" : "exam-manual-form";
+  const form = document.getElementById(formId);
+  form.style.display = "none";
+  form.reset();
+}
+
+// ---- 看診時間表：拍照新增的重複檢查與送出 ----
+
+// 判斷這筆看診預約跟目前列表裡的資料是不是重複：同一天、且醫院／科別的關鍵字很像就算重複
+function isVisitDuplicate(date, hospital) {
+  return allData.visit.some(
+    (item) =>
+      matchesPersonFilter(item) &&
+      item.date === date &&
+      item.hospital &&
+      hospital &&
+      item.hospital.includes(hospital.slice(0, 4))
+  );
+}
+
+async function submitVisitManualForm(event) {
+  event.preventDefault();
+  const form = event.target;
+  const newItem = {
+    date: form.elements["date"].value,
+    time: form.elements["time"].value,
+    hospital: form.elements["hospital"].value,
+    caregiver1: form.elements["caregiver1"].value,
+    caregiver2: form.elements["caregiver2"].value,
+    note: form.elements["note"].value,
+    person: currentPerson,
+  };
+
+  if (isVisitDuplicate(newItem.date, newItem.hospital)) {
+    showDuplicateModal(
+      `看診時間表裡已經有「${newItem.date} ${newItem.hospital}」這一筆資料了，這次先不新增，請確認是否重複。`
+    );
+    return;
+  }
+
+  if (!supabaseClient) {
+    alert("目前無法連線到 Supabase，請確認網路連線後再試一次。");
+    return;
+  }
+  const { error } = await supabaseClient.from("visits").insert(mapVisitItemToRow(newItem));
+  if (error) {
+    console.error("新增看診記錄失敗：", error);
+    alert("新增看診記錄失敗，請稍後再試。");
+    return;
+  }
+  hideManualForm("visit");
+  await refreshVisitList();
+}
+
+// ---- 檢查排程：拍照新增的重複檢查與送出 ----
+
+// 判斷這筆檢查／檢驗資料跟同一分類裡的資料是不是重複：同一天、且名稱關鍵字很像就算重複
+function isExamDuplicate(category, dateValue, name) {
+  const dateField = EXAM_DATE_FIELD[category];
+  return allData[category].some((item) => {
+    if (!matchesPersonFilter(item)) {
+      return false;
+    }
+    const itemDate = (item[dateField] || "").substring(0, 10);
+    const itemName = category === "examCheck" ? item.item : item.department;
+    return itemDate === dateValue && itemName && name && itemName.includes(name.slice(0, 4));
+  });
+}
+
+function submitExamManualForm(event) {
+  event.preventDefault();
+  const form = event.target;
+  const category = form.elements["examType"].value; // labTest / examCheck / radiology
+  const name = form.elements["name"].value;
+  const doctor = form.elements["doctor"].value;
+  const date1 = form.elements["date1"].value;
+  const date2 = form.elements["date2"].value;
+  const place = form.elements["place"].value;
+
+  if (isExamDuplicate(category, date1, name)) {
+    showDuplicateModal(
+      `檢查排程裡已經有「${date1} ${name}」這一筆資料了，這次先不新增，請確認是否重複。`
+    );
+    return;
+  }
+
+  // 依單據類別，把共用欄位（科別／項目、日期）對應到各分類自己的欄位名稱
+  let newItem = { doctor, person: currentPerson };
+  if (category === "labTest") {
+    newItem = { ...newItem, department: name, validFrom: date1, validTo: date2, specimen: place };
+  } else if (category === "examCheck") {
+    newItem = { ...newItem, item: name, examDatetime: date1, location: place };
+  } else {
+    newItem = { ...newItem, department: name, examDate: date1, location: place };
+  }
+
+  allData[category].push(newItem);
+  saveData(allData);
+  hideManualForm("exam");
+  renderExamList();
+}
+
+// 設定拍照新增功能：按鈕、相機視窗、確認表單、資料重複提示視窗
+function setupCameraFeature() {
+  const examCameraBtn = document.getElementById("exam-camera-btn");
+  const visitCameraBtn = document.getElementById("visit-camera-btn");
+  const captureBtn = document.getElementById("camera-capture-btn");
+  const cancelBtn = document.getElementById("camera-cancel-btn");
+  const examForm = document.getElementById("exam-manual-form");
+  const visitForm = document.getElementById("visit-manual-form");
+  const examCancelBtn = document.getElementById("exam-manual-cancel-btn");
+  const visitCancelBtn = document.getElementById("visit-manual-cancel-btn");
+  const duplicateCloseBtn = document.getElementById("duplicate-modal-close-btn");
+
+  // 保護機制：如果 index.html 版本不對、找不到拍照新增的元件，就直接跳過設定
+  if (!examCameraBtn || !visitCameraBtn || !captureBtn || !examForm || !visitForm) {
+    console.warn("找不到拍照新增功能的元件，已略過設定。");
+    return;
+  }
+
+  examCameraBtn.addEventListener("click", () => openCameraModal("exam"));
+  visitCameraBtn.addEventListener("click", () => openCameraModal("visit"));
+  captureBtn.addEventListener("click", capturePhotoAndRecognize);
+  cancelBtn.addEventListener("click", closeCameraModal);
+
+  examForm.addEventListener("submit", submitExamManualForm);
+  visitForm.addEventListener("submit", submitVisitManualForm);
+  examCancelBtn.addEventListener("click", () => hideManualForm("exam"));
+  visitCancelBtn.addEventListener("click", () => hideManualForm("visit"));
+
+  duplicateCloseBtn.addEventListener("click", () => {
+    document.getElementById("duplicate-modal").style.display = "none";
+  });
+}
+
+// ---------------------------------------
 // 初始化：頁面載入完成後執行
 // ---------------------------------------
 
@@ -1320,6 +1671,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   });
 
   setupVisitSearch(); // 設定看診記錄的日期搜尋功能
+  setupCameraFeature(); // 設定「拍照新增」功能（檢查排程、看診時間表）
+
+  // 幫每個頁簽的「日期」表頭加上點擊排序功能（病歷資料的表頭是動態產生的，不用在這裡設定）
+  ["exam", "visit", "care", "ltc", "advance"].forEach((category) => {
+    setupDateSortHeader(category);
+  });
 
   importExamSeedDataOnce(); // 匯入檢驗單／檢查單／放射單的初始資料（只做一次，還是存在 localStorage）
 
