@@ -256,11 +256,17 @@ main {
 }
 
 .search-bar input[type="date"],
+.search-bar input[type="text"],
 .search-bar select {
   padding: 6px;
   border: 1px solid #ccc;
   border-radius: 6px;
   margin-left: 4px;
+}
+
+/* 關鍵字搜尋欄位比日期欄位長一點，方便輸入 */
+.search-bar input[type="text"] {
+  min-width: 160px;
 }
 
 .search-bar button {

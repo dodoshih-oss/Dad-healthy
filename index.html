@@ -63,6 +63,10 @@
             <option value="其他">其他</option>
           </select>
         </label>
+        <label>關鍵字：
+          <input type="text" id="medical-keyword-search" placeholder="搜尋病症、診斷、備註…" />
+        </label>
+        <button type="button" id="medical-keyword-search-btn">搜尋</button>
       </div>
 
       <form id="medical-form" class="add-form">
@@ -105,6 +109,10 @@
             <option value="expired">已過期</option>
           </select>
         </label>
+        <label>關鍵字：
+          <input type="text" id="exam-keyword-search" placeholder="搜尋科別、項目、醫師、地點…" />
+        </label>
+        <button type="button" id="exam-keyword-search-btn">搜尋</button>
       </div>
 
       <!-- 三種單據合併成同一個表格，欄位對齊，手機上比較好讀
@@ -164,8 +172,12 @@
             <option value="expired">已過期</option>
           </select>
         </label>
+        <label>關鍵字：
+          <input type="text" id="visit-keyword-search" placeholder="搜尋醫院、科別、備註…" />
+        </label>
         <button type="button" id="visit-search-btn">搜尋</button>
       </div>
+      <!-- 「搜尋」按鈕同時套用日期起迄、照顧者、顯示範圍跟關鍵字這幾個條件 -->
 
       <table class="visit-table">
         <thead><tr><th>對象</th><th id="visit-date-header" class="date-sort-header">日期</th><th>時間</th><th>醫院 / 科別</th><th>照顧①</th><th>照顧②</th><th>備註</th><th></th></tr></thead>
@@ -202,6 +214,14 @@
     <!-- ===== 照顧記錄 ===== -->
     <section id="care" class="tab-content">
       <h2>每次照顧記錄</h2>
+
+      <div class="search-bar">
+        <label>關鍵字：
+          <input type="text" id="care-keyword-search" placeholder="搜尋照顧內容、備註…" />
+        </label>
+        <button type="button" id="care-keyword-search-btn">搜尋</button>
+      </div>
+
       <form id="care-form" class="add-form">
         <input type="date" name="date" required />
         <input type="text" name="content" placeholder="照顧內容（例如：協助洗澡、量血壓）" required />
@@ -225,6 +245,10 @@
             <option value="all">全部</option>
           </select>
         </label>
+        <label>關鍵字：
+          <input type="text" id="ltc-keyword-search" placeholder="搜尋申請項目、備註…" />
+        </label>
+        <button type="button" id="ltc-keyword-search-btn">搜尋</button>
       </div>
 
       <form id="ltc-form" class="add-form">
@@ -258,6 +282,10 @@
             <option value="all">全部</option>
           </select>
         </label>
+        <label>關鍵字：
+          <input type="text" id="advance-keyword-search" placeholder="搜尋項目、代墊款人、備註…" />
+        </label>
+        <button type="button" id="advance-keyword-search-btn">搜尋</button>
       </div>
 
       <!-- 已代墊款項：原本的代墊款紀錄，用獨立區塊跟「需要購買清單」分開，避免混淆 -->
