@@ -1400,13 +1400,14 @@ async function openCameraModal(targetTab) {
     cameraStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: "environment" },
     });
+    video.srcObject = cameraStream;
+    video.style.display = "block";
   } catch (err) {
+    // 開不了相機也沒關係，視窗還是打開，讓使用者改用「照片」按鈕從相簿選圖片
     console.error("開啟相機失敗：", err);
-    alert("無法開啟相機，請確認瀏覽器已允許使用相機權限。");
-    return;
+    video.style.display = "none";
   }
 
-  video.srcObject = cameraStream;
   modal.style.display = "flex";
 }
 
@@ -1472,20 +1473,13 @@ function parseOcrText(text) {
   };
 }
 
-// 拍照，並且把照片交給 Tesseract.js 辨識文字（chi_tra 是繁體中文，eng 是英文／數字）
-async function capturePhotoAndRecognize() {
-  const video = document.getElementById("camera-video");
-  const canvas = document.getElementById("camera-canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
-
-  const targetTab = cameraTargetTab;
-  closeCameraModal();
+// 把一張圖片（canvas 或圖片元素都可以）交給 Tesseract.js 辨識文字，
+// 辨識完之後自動填進對應頁簽的「確認新增」表單
+// （chi_tra 是繁體中文，eng 是英文／數字，兩種一起辨識效果比較好）
+async function recognizeImageAndFillForm(imageSource, targetTab) {
   setOcrLoading(true);
-
   try {
-    const result = await Tesseract.recognize(canvas, "chi_tra+eng");
+    const result = await Tesseract.recognize(imageSource, "chi_tra+eng");
     const parsed = parseOcrText(result.data.text);
     setOcrLoading(false);
     fillManualFormFromOcr(targetTab, parsed);
@@ -1495,6 +1489,43 @@ async function capturePhotoAndRecognize() {
     alert("照片辨識失敗，請直接手動輸入資料。");
     showManualForm(targetTab);
   }
+}
+
+// 按下「拍照」：把相機目前畫面截圖到 canvas，再交給文字辨識
+function capturePhotoAndRecognize() {
+  if (!cameraStream) {
+    alert("目前沒有開啟相機，請改按「照片」從相簿選擇圖片。");
+    return;
+  }
+  const video = document.getElementById("camera-video");
+  const canvas = document.getElementById("camera-canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext("2d").drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const targetTab = cameraTargetTab;
+  closeCameraModal();
+  recognizeImageAndFillForm(canvas, targetTab);
+}
+
+// 按下「照片」：改用手機／電腦相簿裡選好的圖片，一樣交給文字辨識
+function handleAlbumFileSelected(event) {
+  const file = event.target.files && event.target.files[0];
+  event.target.value = ""; // 清空，避免下次選同一張圖片時不會觸發 change 事件
+  if (!file) {
+    return;
+  }
+
+  const targetTab = cameraTargetTab;
+  const image = new Image();
+  image.onload = () => {
+    closeCameraModal();
+    recognizeImageAndFillForm(image, targetTab);
+  };
+  image.onerror = () => {
+    alert("這張圖片無法讀取，請換一張試試看。");
+  };
+  image.src = URL.createObjectURL(file); // 把選好的檔案轉成瀏覽器可以直接顯示的網址
 }
 
 // 把辨識結果填進對應頁簽的「確認新增」表單，並且把表單顯示出來
@@ -1628,6 +1659,8 @@ function setupCameraFeature() {
   const examCameraBtn = document.getElementById("exam-camera-btn");
   const visitCameraBtn = document.getElementById("visit-camera-btn");
   const captureBtn = document.getElementById("camera-capture-btn");
+  const albumBtn = document.getElementById("camera-album-btn");
+  const albumInput = document.getElementById("camera-album-input");
   const cancelBtn = document.getElementById("camera-cancel-btn");
   const examForm = document.getElementById("exam-manual-form");
   const visitForm = document.getElementById("visit-manual-form");
@@ -1636,7 +1669,7 @@ function setupCameraFeature() {
   const duplicateCloseBtn = document.getElementById("duplicate-modal-close-btn");
 
   // 保護機制：如果 index.html 版本不對、找不到拍照新增的元件，就直接跳過設定
-  if (!examCameraBtn || !visitCameraBtn || !captureBtn || !examForm || !visitForm) {
+  if (!examCameraBtn || !visitCameraBtn || !captureBtn || !albumBtn || !albumInput || !examForm || !visitForm) {
     console.warn("找不到拍照新增功能的元件，已略過設定。");
     return;
   }
@@ -1644,6 +1677,8 @@ function setupCameraFeature() {
   examCameraBtn.addEventListener("click", () => openCameraModal("exam"));
   visitCameraBtn.addEventListener("click", () => openCameraModal("visit"));
   captureBtn.addEventListener("click", capturePhotoAndRecognize);
+  albumBtn.addEventListener("click", () => albumInput.click()); // 點「照片」按鈕，觸發隱藏的檔案選擇框
+  albumInput.addEventListener("change", handleAlbumFileSelected);
   cancelBtn.addEventListener("click", closeCameraModal);
 
   examForm.addEventListener("submit", submitExamManualForm);

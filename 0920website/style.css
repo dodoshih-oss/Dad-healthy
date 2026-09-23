@@ -564,6 +564,7 @@ footer {
 }
 
 #camera-capture-btn,
+#camera-album-btn,
 #duplicate-modal-close-btn {
   background-color: #4a7c59;
   color: white;

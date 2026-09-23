@@ -292,8 +292,11 @@
       <canvas id="camera-canvas" style="display:none;"></canvas>
       <div class="modal-actions">
         <button type="button" id="camera-capture-btn">拍照</button>
+        <button type="button" id="camera-album-btn">照片</button>
         <button type="button" id="camera-cancel-btn">取消</button>
       </div>
+      <!-- 「照片」按鈕：點擊後改用手機/電腦的相簿選圖片，不用另外開相機 -->
+      <input type="file" id="camera-album-input" accept="image/*" style="display:none;" />
     </div>
   </div>
 
