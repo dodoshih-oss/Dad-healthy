@@ -135,9 +135,11 @@ main {
   padding: 0 16px;
 }
 
-/* 檢查排程的「日期」欄位，如果有起訖日就上下兩行呈現 */
+/* 檢查排程的「日期」欄位，如果有起訖日就上下兩行呈現；
+   單一日期+時間（例如檢查單）字數較多時，允許換行，避免手機螢幕太窄時和旁邊欄位重疊 */
 .date-range div {
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
 }
 
 /* 預設隱藏所有分頁內容，只顯示 active 的那一個 */
@@ -668,39 +670,176 @@ footer {
     padding: 10px;
   }
 
-  /* 表格重點：手機螢幕太窄時，表格維持原本欄寬（不硬擠），
-     外面用左右滑動的方式查看，欄位才不會歪掉、字擠成一團 */
+  /* ===== 表格 RWD 總原則 =====
+     手機螢幕太窄時，「所有」表格一律改成：固定欄寬比例（不會被內容撐開）、
+     縮小字體跟間距、文字自動換行，盡量整個塞進螢幕，不要出現左右捲軸。
+     萬一內容真的太長換行也放不下，才用 overflow-x 讓使用者可以左右滑動當作保險。 */
   .tab-content,
   .section-block {
     overflow-x: auto;
   }
 
   table {
-    min-width: 560px; /* 表格最小寬度，寬度不夠時就出現左右捲軸 */
-  }
-
-  .medical-table {
-    min-width: 480px;
-  }
-
-  /* 「已代墊款項」「需要購買清單」欄位比較少，改成不強制最小寬度，
-     讓表格直接縮小、文字自動換行塞進手機畫面，盡量不要出現左右捲軸 */
-  .section-block {
-    overflow-x: visible;
-  }
-
-  .advance-table,
-  .shopping-table {
-    min-width: 0;
     table-layout: fixed;
+    width: 100%;
+    min-width: 0; /* 不強制最小寬度，寬度不夠就縮小、換行，而不是出現捲軸 */
     font-size: 12px;
   }
 
-  .advance-table th,
-  .advance-table td,
-  .shopping-table th,
-  .shopping-table td {
+  th, td {
     padding: 6px 4px;
+  }
+
+  .edit-btn,
+  .delete-btn {
+    width: 44px;
+    font-size: 11px;
+    padding: 4px 2px;
+  }
+
+  /* 病歷資料欄位順序：分類、日期、病症/診斷、備註、操作 */
+  .medical-table th:nth-child(1),
+  .medical-table td:nth-child(1) {
+    width: 16%;
+  }
+
+  .medical-table th:nth-child(2),
+  .medical-table td:nth-child(2) {
+    width: 16%;
+  }
+
+  .medical-table th:nth-child(3),
+  .medical-table td:nth-child(3) {
+    width: 22%;
+  }
+
+  .medical-table th:nth-child(4),
+  .medical-table td:nth-child(4) {
+    width: 32%;
+  }
+
+  .medical-table th:nth-child(5),
+  .medical-table td:nth-child(5) {
+    width: 14%;
+  }
+
+  /* 檢查排程欄位順序：類別、科別/項目、醫師、日期、地點/檢體（不能編輯/刪除，沒有操作欄） */
+  .exam-table th:nth-child(1),
+  .exam-table td:nth-child(1) {
+    width: 14%;
+  }
+
+  .exam-table th:nth-child(2),
+  .exam-table td:nth-child(2) {
+    width: 26%;
+  }
+
+  .exam-table th:nth-child(3),
+  .exam-table td:nth-child(3) {
+    width: 16%;
+  }
+
+  .exam-table th:nth-child(4),
+  .exam-table td:nth-child(4) {
+    width: 16%;
+  }
+
+  .exam-table th:nth-child(5),
+  .exam-table td:nth-child(5) {
+    width: 28%;
+  }
+
+  /* 看診時間表欄位順序：對象、日期、時間、醫院/科別、照顧①、照顧②、備註、操作 */
+  .visit-table th:nth-child(1),
+  .visit-table td:nth-child(1) {
+    width: 8%;
+  }
+
+  .visit-table th:nth-child(2),
+  .visit-table td:nth-child(2) {
+    width: 13%;
+  }
+
+  .visit-table th:nth-child(3),
+  .visit-table td:nth-child(3) {
+    width: 9%;
+  }
+
+  .visit-table th:nth-child(4),
+  .visit-table td:nth-child(4) {
+    width: 20%;
+  }
+
+  .visit-table th:nth-child(5),
+  .visit-table td:nth-child(5) {
+    width: 8%;
+  }
+
+  .visit-table th:nth-child(6),
+  .visit-table td:nth-child(6) {
+    width: 8%;
+  }
+
+  .visit-table th:nth-child(7),
+  .visit-table td:nth-child(7) {
+    width: 20%;
+  }
+
+  .visit-table th:nth-child(8),
+  .visit-table td:nth-child(8) {
+    width: 14%;
+  }
+
+  /* 照顧記錄欄位順序：日期、照顧內容、備註、操作 */
+  .care-table th:nth-child(1),
+  .care-table td:nth-child(1) {
+    width: 16%;
+  }
+
+  .care-table th:nth-child(2),
+  .care-table td:nth-child(2) {
+    width: 28%;
+  }
+
+  .care-table th:nth-child(3),
+  .care-table td:nth-child(3) {
+    width: 40%;
+  }
+
+  .care-table th:nth-child(4),
+  .care-table td:nth-child(4) {
+    width: 16%;
+  }
+
+  /* 長照申請進度欄位順序：對象、申請項目、狀態、日期、備註、操作 */
+  .ltc-table th:nth-child(1),
+  .ltc-table td:nth-child(1) {
+    width: 10%;
+  }
+
+  .ltc-table th:nth-child(2),
+  .ltc-table td:nth-child(2) {
+    width: 15%;
+  }
+
+  .ltc-table th:nth-child(3),
+  .ltc-table td:nth-child(3) {
+    width: 14%;
+  }
+
+  .ltc-table th:nth-child(4),
+  .ltc-table td:nth-child(4) {
+    width: 14%;
+  }
+
+  .ltc-table th:nth-child(5),
+  .ltc-table td:nth-child(5) {
+    width: 33%;
+  }
+
+  .ltc-table th:nth-child(6),
+  .ltc-table td:nth-child(6) {
+    width: 14%;
   }
 
   /* 已代墊款項欄位順序：對象、日期、項目、金額、代墊款人、備註、操作 */
@@ -763,15 +902,6 @@ footer {
   .shopping-table th:nth-child(5),
   .shopping-table td:nth-child(5) {
     width: 14%;
-  }
-
-  .advance-table .edit-btn,
-  .advance-table .delete-btn,
-  .shopping-table .edit-btn,
-  .shopping-table .delete-btn {
-    width: 44px;
-    font-size: 11px;
-    padding: 4px 2px;
   }
 
   /* 彈出視窗（相機拍照等）在手機上寬度改滿版一點 */
