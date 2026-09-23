@@ -804,6 +804,10 @@ function renderList(category) {
       delBtn.textContent = "刪除";
       delBtn.className = "delete-btn";
       delBtn.addEventListener("click", async () => {
+        // 刪除前先跳出視窗提醒，使用者再次按「確定」才會真的刪除，避免手滑點到
+        if (!confirm("確定要刪除這筆資料嗎？刪除後無法復原。")) {
+          return;
+        }
         if (SUPABASE_SYNCED_CATEGORIES.includes(category)) {
           await deleteCategoryItem(category, item); // 長照申請進度：改成連線 Supabase 刪除
           return;
@@ -938,6 +942,9 @@ function renderMedicalList() {
       delBtn.textContent = "刪除";
       delBtn.className = "delete-btn";
       delBtn.addEventListener("click", async () => {
+        if (!confirm("確定要刪除這筆資料嗎？刪除後無法復原。")) {
+          return;
+        }
         await deleteCategoryItem("medical", item); // 改成連線 Supabase 刪除
       });
       actionTd.appendChild(delBtn);
@@ -1001,6 +1008,9 @@ function renderShoppingList() {
     delBtn.textContent = "刪除";
     delBtn.className = "delete-btn";
     delBtn.addEventListener("click", async () => {
+      if (!confirm("確定要刪除這筆資料嗎？刪除後無法復原。")) {
+        return;
+      }
       await deleteCategoryItem("shopping", item); // 改成連線 Supabase 刪除
     });
     actionTd.appendChild(delBtn);
