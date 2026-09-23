@@ -1,8 +1,7 @@
 // ========================================
 // 爸媽的照顧網站 - script.js
-// 看診時間表／病歷資料／長照申請進度／需要購買清單：都連線 Supabase 資料庫（test0920 專案），
-//           這樣不管用哪一台電腦或手機打開網站，看到的都是同一份最新資料
-// 檢查排程／照顧記錄：還是存在瀏覽器的 localStorage 裡
+// 全部分頁（看診時間表／病歷資料／檢查排程／照顧記錄／長照申請進度／購物墊款清單）都連線
+// Supabase 資料庫（test0920 專案），這樣不管用哪一台電腦或手機打開網站，看到的都是同一份最新資料
 // 網站同時記錄「爸爸」跟「媽媽」的資料，每一筆資料都有 person 欄位標記，
 // 點上方照片切換人物時，畫面只會顯示那個人的資料
 // ========================================
@@ -101,20 +100,34 @@ async function refreshVisitList() {
 }
 
 // ---------------------------------------
-// 病歷資料／長照申請進度／需要購買清單：也改成連線 Supabase（test0920 專案）
-// 這三個分類的資料表欄位名稱跟網頁上用的欄位名稱完全一樣（category、date、title、
-// note、item、status、purchased、person），所以不需要另外寫轉換函式，
+// 病歷資料／檢查排程／照顧記錄／長照申請進度／購物墊款清單：都改成連線 Supabase（test0920 專案）
+// 這些分類的資料表欄位名稱都跟網頁上用的欄位名稱完全一樣，所以不需要另外寫轉換函式，
 // 直接把 Supabase 讀回來的資料當作 allData[category] 使用即可
+// （看診時間表比較特別，欄位名稱不一樣，另外用 mapRowToVisitItem／mapVisitItemToRow 轉換）
 // ---------------------------------------
 
-// 這三個分類改成連線 Supabase，不再存 localStorage
-const SUPABASE_SYNCED_CATEGORIES = ["medical", "ltc", "shopping"];
+// 這些分類都改成連線 Supabase，不再存 localStorage
+const SUPABASE_SYNCED_CATEGORIES = [
+  "medical",
+  "ltc",
+  "shopping",
+  "labTest",
+  "examCheck",
+  "radiology",
+  "care",
+  "advance",
+];
 
 // 對應到 Supabase 裡的資料表名稱
 const SUPABASE_TABLE_NAME = {
   medical: "medical_records",
   ltc: "ltc_records",
   shopping: "shopping_items",
+  labTest: "lab_tests",
+  examCheck: "exam_checks",
+  radiology: "radiology_records",
+  care: "care_records",
+  advance: "advance_records",
 };
 
 // 從 Supabase 讀取某個分類底下的資料（爸爸媽媽的都讀出來，依新增順序排序）
@@ -147,6 +160,9 @@ async function refreshCategoryList(category) {
     renderMedicalList();
   } else if (category === "shopping") {
     renderShoppingList();
+  } else if (EXAM_CATEGORIES.includes(category)) {
+    // 檢驗單／檢查單／放射單是合併成同一個表格顯示的，改用 renderExamList
+    renderExamList();
   } else {
     renderList(category);
   }
@@ -265,7 +281,8 @@ const examFilters = {
   status: "valid",
 };
 
-// 儲存在 localStorage 的 key 名稱（檢查排程／照顧記錄會用到，其他分類都改連線 Supabase）
+// 舊版留下來的 localStorage key 名稱，現在所有分類都已經改連線 Supabase，
+// 這裡保留只是避免其他還沒清乾淨的地方讀取時出錯
 const STORAGE_KEY = "dadCareData";
 
 // 各分類的欄位設定：
@@ -402,49 +419,6 @@ Object.keys(CONFIG).forEach((key) => {
     allData[key] = [];
   }
 });
-
-// ---------------------------------------
-// 檢查排程（檢驗單／檢查單／放射單）的初始資料
-// 只在「第一次開啟網站」時自動加入一次，之後不會重複匯入，
-// 也不會蓋掉使用者自己新增／刪除／編輯過的資料
-// ---------------------------------------
-
-const EXAM_SEED_FLAG_KEY = "dadCareSeeded_exam_20260920";
-
-// 這 5 張截圖是爸爸的資料，所以每一筆都標記 person: "dad"
-const EXAM_SEED_DATA = {
-  labTest: [
-    { department: "泌尿科", doctor: "林孝友", validFrom: "2026-05-16", validTo: "2026-11-11", specimen: "血液", person: "dad" },
-    { department: "泌尿科", doctor: "林孝友", validFrom: "2026-08-03", validTo: "2027-01-29", specimen: "血液", person: "dad" },
-    { department: "內分泌科", doctor: "翁瑄甫", validFrom: "2026-08-03", validTo: "2027-01-29", specimen: "血液", person: "dad" },
-    { department: "內分泌科", doctor: "翁瑄甫", validFrom: "2026-08-03", validTo: "2027-01-29", specimen: "尿液", person: "dad" },
-    { department: "胸腔內科", doctor: "周百謙", validFrom: "2026-09-10", validTo: "2027-03-08", specimen: "血液", person: "dad" },
-  ],
-  examCheck: [
-    { item: "杜卜勒彩色心臟血流圖（DOPPLER）", doctor: "蔡松航", examDatetime: "2026-09-23T15:01", location: "心臟功能室(三大樓6樓)", person: "dad" },
-    { item: "超音波心臟圖（單面，雙面）超聲心動圖", doctor: "蔡松航", examDatetime: "2026-09-23T15:01", location: "心臟功能室(三大樓6樓)", person: "dad" },
-  ],
-  radiology: [
-    { department: "胸腔內科", doctor: "周百謙", examDate: "2026-09-10", location: "", person: "dad" },
-    { department: "胸腔內科", doctor: "周百謙", examDate: "2026-09-10", location: "", person: "dad" },
-  ],
-};
-
-function importExamSeedDataOnce() {
-  const alreadySeeded = localStorage.getItem(EXAM_SEED_FLAG_KEY);
-  if (alreadySeeded) {
-    return; // 已經匯入過了，不再重複
-  }
-
-  Object.keys(EXAM_SEED_DATA).forEach((category) => {
-    EXAM_SEED_DATA[category].forEach((item) => {
-      allData[category].push(item);
-    });
-  });
-
-  saveData(allData);
-  localStorage.setItem(EXAM_SEED_FLAG_KEY, "true"); // 標記已匯入
-}
 
 // ---------------------------------------
 // 畫面渲染：把資料畫成表格列
@@ -1172,14 +1146,14 @@ function renderAll() {
       return; // 檢查排程改用下面的 renderExamList，合併成同一個表格顯示
     }
     if (SUPABASE_SYNCED_CATEGORIES.includes(category)) {
-      return; // 病歷資料／長照申請進度／需要購買清單改連線 Supabase，用 refreshAllSupabaseCategories 處理
+      return; // 已經連線 Supabase 的分類，改用 refreshAllSupabaseCategories 處理
     }
     renderList(category);
   });
   renderExamList();
 }
 
-// 重新從 Supabase 抓「病歷資料／長照申請進度／需要購買清單」這三個分類的最新資料
+// 重新從 Supabase 抓所有已連線分類（病歷資料／檢查排程／照顧記錄／長照申請進度／購物墊款清單）的最新資料
 async function refreshAllSupabaseCategories() {
   await Promise.all(SUPABASE_SYNCED_CATEGORIES.map((category) => refreshCategoryList(category)));
 }
@@ -1599,11 +1573,9 @@ function setupPersonSwitcher() {
       // 看診時間表／長照申請進度／購物墊款清單的「對象」下拉選單，預設也跟著切換成這個人
       applyPersonDefaultToTabFilters();
 
-      // 重新畫出檢查排程／照顧記錄（這些還是存在 localStorage，切換很快）
-      renderAll();
+      renderAll(); // 重畫看診時間表（其他分類等下面重新抓 Supabase 資料後會一起重畫）
 
-      // 看診時間表／病歷資料／長照申請進度／需要購買清單都存在 Supabase，
-      // 需要重新抓「這個人」的資料
+      // 全部分頁都存在 Supabase，切換人物後重新抓一次最新資料
       if (supabaseClient) {
         const personName = currentPerson === "dad" ? "爸爸" : "媽媽";
         setVisitSyncStatus(`資料讀取中…（${personName}）`);
@@ -1856,7 +1828,7 @@ function isExamDuplicate(category, dateValue, name) {
   });
 }
 
-function submitExamManualForm(event) {
+async function submitExamManualForm(event) {
   event.preventDefault();
   const form = event.target;
   const category = form.elements["examType"].value; // labTest / examCheck / radiology
@@ -1883,10 +1855,8 @@ function submitExamManualForm(event) {
     newItem = { ...newItem, department: name, examDate: date1, location: place };
   }
 
-  allData[category].push(newItem);
-  saveData(allData);
+  await insertCategoryItem(category, newItem); // 新增到 Supabase（lab_tests／exam_checks／radiology_records）
   hideManualForm("exam");
-  renderExamList();
 }
 
 // 設定拍照新增功能：按鈕、相機視窗、確認表單、資料重複提示視窗
@@ -1951,18 +1921,16 @@ document.addEventListener("DOMContentLoaded", async () => {
     setupDateSortHeader(category);
   });
 
-  importExamSeedDataOnce(); // 匯入檢驗單／檢查單／放射單的初始資料（只做一次，還是存在 localStorage）
-
-  // 先把檢查排程／照顧記錄畫出來（這些還是存在 localStorage，讀取很快）
+  // 一開始先畫一次畫面（此時 Supabase 資料還沒讀回來，大部分表格會是空的）
   renderAll();
 
-  // 看診時間表／病歷資料／長照申請進度／需要購買清單都改成連線 Supabase，
-  // 需要一點時間讀取，讀取完再畫出來
+  // 病歷資料／檢查排程／看診時間表／照顧記錄／長照申請進度／購物墊款清單，
+  // 全部都改成連線 Supabase，需要一點時間讀取，讀取完再畫出來
   if (supabaseClient) {
     setVisitSyncStatus("資料讀取中…");
     await Promise.all([refreshVisitList(), refreshAllSupabaseCategories()]);
     setVisitSyncStatus("✅ 已連線 Supabase（test0920 專案）");
   } else {
-    setVisitSyncStatus("⚠️ Supabase 函式庫載入失敗，病歷資料／看診時間表／長照申請進度／購物清單暫時無法使用，請確認網路連線後重新整理頁面。");
+    setVisitSyncStatus("⚠️ Supabase 函式庫載入失敗，網站的資料暫時無法讀取，請確認網路連線後重新整理頁面。");
   }
 });
