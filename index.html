@@ -119,7 +119,7 @@
       <!-- 三種單據合併成同一個表格，欄位對齊，手機上比較好讀
            資料主要是從醫院系統匯入的，不開放直接編輯／刪除，
            但可以用「拍照新增」快速補一筆新的資料進來 -->
-      <table>
+      <table class="exam-table">
         <thead><tr><th>類別</th><th>科別／項目</th><th>醫師</th><th id="exam-date-header" class="date-sort-header">日期</th><th>地點／檢體</th></tr></thead>
         <tbody id="exam-list"></tbody>
       </table>
@@ -229,7 +229,7 @@
         <textarea name="note" placeholder="備註（按 Enter 可換行）" rows="2"></textarea>
         <button type="submit">新增紀錄</button>
       </form>
-      <table>
+      <table class="care-table">
         <thead><tr><th id="care-date-header" class="date-sort-header">日期</th><th>照顧內容</th><th>備註</th><th></th></tr></thead>
         <tbody id="care-list"></tbody>
       </table>
