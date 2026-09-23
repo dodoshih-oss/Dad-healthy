@@ -225,15 +225,16 @@ const CAREGIVER_OPTIONS = ["", "甄", "瑤", "慈", "書", "沛"];
 // 病歷資料的病症分類選項（第一個空字串代表「留白」，方便把不同時期的病歷依科別分組）
 const MEDICAL_CATEGORY_OPTIONS = [
   "",
-  "神經內科/失智",
-  "泌尿科/攝護腺",
-  "內分泌科/高血壓血脂糖尿病",
-  "耳鼻喉科/重聽",
-  "脊椎骨科/骨折",
+  "神經內科",
+  "泌尿科",
+  "內分泌科",
+  "耳鼻喉科",
+  "脊椎骨科",
+  "其他",
 ];
 
-// 分組顯示時的分類順序，最後補一個「其他」給沒有分類的資料
-const MEDICAL_GROUP_ORDER = MEDICAL_CATEGORY_OPTIONS.filter((c) => c).concat(["其他"]);
+// 分組顯示時的分類順序（「其他」已經包含在上面的選項清單裡了）
+const MEDICAL_GROUP_ORDER = MEDICAL_CATEGORY_OPTIONS.filter((c) => c);
 
 // 依標題裡的關鍵字，猜出這筆病歷屬於哪個分類
 // （舊資料在新增「分類」欄位之前就已經存在，沒有分類資訊，所以用關鍵字判斷）
@@ -243,19 +244,19 @@ function inferMedicalCategory(item) {
   }
   const text = (item.title || "") + (item.note || "");
   if (text.includes("血壓") || text.includes("血糖") || text.includes("糖尿")) {
-    return "內分泌科/高血壓血脂糖尿病";
+    return "內分泌科";
   }
   if (text.includes("攝護腺") || text.includes("泌尿")) {
-    return "泌尿科/攝護腺";
+    return "泌尿科";
   }
   if (text.includes("失智") || text.includes("神經內科")) {
-    return "神經內科/失智";
+    return "神經內科";
   }
   if (text.includes("骨折") || text.includes("跌倒")) {
-    return "脊椎骨科/骨折";
+    return "脊椎骨科";
   }
   if (text.includes("聽力") || text.includes("耳鼻喉")) {
-    return "耳鼻喉科/重聽";
+    return "耳鼻喉科";
   }
   return "其他";
 }

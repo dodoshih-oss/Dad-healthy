@@ -55,11 +55,11 @@
         <label>病症分類：
           <select id="medical-search-category">
             <option value="all" selected>全部</option>
-            <option value="神經內科/失智">神經內科/失智</option>
-            <option value="泌尿科/攝護腺">泌尿科/攝護腺</option>
-            <option value="內分泌科/高血壓血脂糖尿病">內分泌科/高血壓血脂糖尿病</option>
-            <option value="耳鼻喉科/重聽">耳鼻喉科/重聽</option>
-            <option value="脊椎骨科/骨折">脊椎骨科/骨折</option>
+            <option value="神經內科">神經內科</option>
+            <option value="泌尿科">泌尿科</option>
+            <option value="內分泌科">內分泌科</option>
+            <option value="耳鼻喉科">耳鼻喉科</option>
+            <option value="脊椎骨科">脊椎骨科</option>
             <option value="其他">其他</option>
           </select>
         </label>
@@ -72,11 +72,12 @@
       <form id="medical-form" class="add-form">
         <select name="category" required>
           <option value="">病症分類</option>
-          <option value="神經內科/失智">神經內科/失智</option>
-          <option value="泌尿科/攝護腺">泌尿科/攝護腺</option>
-          <option value="內分泌科/高血壓血脂糖尿病">內分泌科/高血壓血脂糖尿病</option>
-          <option value="耳鼻喉科/重聽">耳鼻喉科/重聽</option>
-          <option value="脊椎骨科/骨折">脊椎骨科/骨折</option>
+          <option value="神經內科">神經內科</option>
+          <option value="泌尿科">泌尿科</option>
+          <option value="內分泌科">內分泌科</option>
+          <option value="耳鼻喉科">耳鼻喉科</option>
+          <option value="脊椎骨科">脊椎骨科</option>
+          <option value="其他">其他</option>
         </select>
         <input type="date" name="date" required />
         <input type="text" name="title" placeholder="病症 / 診斷名稱" required />
@@ -313,7 +314,7 @@
           <textarea name="note" placeholder="備註（按 Enter 可換行）" rows="2"></textarea>
           <button type="submit">新增紀錄</button>
         </form>
-        <table>
+        <table class="advance-table">
           <thead><tr><th>對象</th><th id="advance-date-header" class="date-sort-header">日期</th><th>項目</th><th>金額</th><th>代墊款人</th><th>備註</th><th></th></tr></thead>
           <tbody id="advance-list"></tbody>
         </table>
