@@ -422,11 +422,13 @@ th, td {
   margin-top: 6px;
 }
 
-/* AI 整理摘要：改用藍紫色，跟上面用程式規則整理的摘要做出區分 */
+/* AI 整理摘要：改用藍紫色，跟上面用程式規則整理的摘要做出區分；
+   整個區塊可以點擊展開／收合，滑鼠移過去改成手指樣式提示可以點 */
 .medical-summary--ai {
   background-color: #f1eefb;
   border-left-color: #6c4ab6;
   margin-top: 12px;
+  cursor: pointer;
 }
 
 .ai-summary-updated {
@@ -434,6 +436,28 @@ th, td {
   font-size: 12px;
   color: #666;
   font-weight: normal;
+}
+
+/* 收合狀態：最多只顯示 3 行，超過的部分用「…」省略 */
+.medical-summary-text--collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 展開狀態：拿掉行數限制，完整顯示全部內容 */
+.medical-summary-text--expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+.medical-summary-toggle-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #6c4ab6;
+  text-align: right;
 }
 
 /* 病歷資料每個分類的標題 */
