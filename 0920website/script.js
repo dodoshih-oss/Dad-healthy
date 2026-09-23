@@ -71,7 +71,9 @@ function mapVisitItemToRow(item) {
   };
 }
 
-// 從 Supabase 讀取「目前選擇的人物」的看診記錄（依日期、時間排序）
+// 從 Supabase 讀取看診記錄（爸爸媽媽的資料都讀出來，依日期、時間排序）
+// 看診時間表有自己的「對象」下拉選單可以篩選，所以這裡不先用 currentPerson 過濾，
+// 全部讀回來、交給畫面渲染時再依下拉選單決定要顯示誰的資料
 async function fetchVisitsFromSupabase() {
   if (!supabaseClient) {
     return [];
@@ -80,7 +82,6 @@ async function fetchVisitsFromSupabase() {
   const { data, error } = await supabaseClient
     .from("visits")
     .select("*")
-    .eq("person", currentPerson)
     .order("visit_date", { ascending: true })
     .order("visit_time", { ascending: true });
 
@@ -116,7 +117,10 @@ const SUPABASE_TABLE_NAME = {
   shopping: "shopping_items",
 };
 
-// 從 Supabase 讀取「目前選擇的人物」在某個分類底下的資料（依新增順序排序）
+// 從 Supabase 讀取某個分類底下的資料（爸爸媽媽的都讀出來，依新增順序排序）
+// 病歷資料還是依照上方頭像切換的 currentPerson 過濾；
+// 長照申請進度、需要購買清單則有自己的「對象」下拉選單，所以這裡都先讀全部資料，
+// 實際要顯示誰的，交給畫面渲染時再決定
 async function fetchCategoryFromSupabase(category) {
   if (!supabaseClient) {
     return [];
@@ -125,7 +129,6 @@ async function fetchCategoryFromSupabase(category) {
   const { data, error } = await supabaseClient
     .from(SUPABASE_TABLE_NAME[category])
     .select("*")
-    .eq("person", currentPerson)
     .order("created_at", { ascending: true });
 
   if (error) {
@@ -560,6 +563,43 @@ function matchesPersonFilter(item) {
   return itemPerson === currentPerson;
 }
 
+// ---------------------------------------
+// 「對象」下拉選單：看診時間表、長照申請進度、購物/墊款清單這三個頁簽，
+// 除了上方頭像可以切換爸爸／媽媽，還可以另外用下拉選單選「全部」，
+// 方便小孩不用一直切換頭像，就能同時看到兩人的資料
+// advance（已代墊款項）跟 shopping（需要購買清單）在同一個頁簽裡，共用同一個下拉選單
+// ---------------------------------------
+
+const TAB_PERSON_FILTER_CATEGORIES = {
+  visit: "visit",
+  ltc: "ltc",
+  advance: "advance",
+  shopping: "advance",
+};
+
+// 各頁簽目前選擇的「對象」："all"（全部）、"dad"（爸爸）、"mom"（媽媽）
+// 預設值會跟著上方頭像切換的人物走（見 applyPersonDefaultToTabFilters）
+const tabPersonFilter = {
+  visit: "dad",
+  ltc: "dad",
+  advance: "dad",
+};
+
+// 「對象」欄位要顯示的中文字
+function personLabel(person) {
+  return (person || "dad") === "mom" ? "媽媽" : "爸爸";
+}
+
+// 判斷這筆資料是否符合「對象」下拉選單目前的篩選條件
+function matchesTabPersonFilter(category, item) {
+  const filterKey = TAB_PERSON_FILTER_CATEGORIES[category];
+  const filterValue = filterKey ? tabPersonFilter[filterKey] : null;
+  if (!filterValue || filterValue === "all") {
+    return true; // 選「全部」，或這個分類沒有下拉選單，都不過濾
+  }
+  return (item.person || "dad") === filterValue;
+}
+
 // 日期格式：完整顯示「年/月/日」，例如 "2026/09/23"
 // 支援 "2026-09-23" 或 "2026-09-23T15:01" 這兩種格式
 function formatShortDate(rawValue) {
@@ -677,7 +717,13 @@ function renderList(category) {
   // 編輯／刪除按鈕還是能正確對應到 allData 裡的正確位置
   let rows = allData[category].map((item, index) => ({ item, index }));
 
-  rows = rows.filter((row) => matchesPersonFilter(row.item)); // 只顯示目前選擇的人物的資料
+  // 看診時間表／長照申請進度／購物墊款清單：用各自的「對象」下拉選單篩選；
+  // 其他分類（例如照顧記錄）還是跟著上方頭像切換的 currentPerson
+  if (TAB_PERSON_FILTER_CATEGORIES[category]) {
+    rows = rows.filter((row) => matchesTabPersonFilter(category, row.item));
+  } else {
+    rows = rows.filter((row) => matchesPersonFilter(row.item));
+  }
   rows = rows.filter((row) => matchesSearchFilter(category, row.item)); // 看診時間表的日期起迄、照顧者篩選
 
   // 依「日期」欄位排序，方向由點擊表頭決定（見 dateSortDirection）
@@ -693,6 +739,12 @@ function renderList(category) {
 
   rows.forEach(({ item, index }) => {
     const tr = document.createElement("tr");
+
+    // 有「對象」下拉選單的分類（看診時間表／長照申請進度／購物墊款清單），
+    // 表格第一欄先放「對象」文字，方便一次看多人資料時分辨是誰的
+    if (TAB_PERSON_FILTER_CATEGORIES[category]) {
+      tr.appendChild(createDisplayCell(personLabel(item.person)));
+    }
 
     // 一般顯示模式：每個欄位放一個純文字儲存格
     fields.forEach((field) => {
@@ -886,7 +938,7 @@ function renderShoppingList() {
   tbody.innerHTML = ""; // 先清空
 
   let rows = allData.shopping.map((item, index) => ({ item, index }));
-  rows = rows.filter((row) => matchesPersonFilter(row.item)); // 只顯示目前選擇的人物的資料
+  rows = rows.filter((row) => matchesTabPersonFilter("shopping", row.item)); // 用「對象」下拉選單篩選
 
   rows.forEach(({ item, index }) => {
     const tr = document.createElement("tr");
@@ -902,6 +954,8 @@ function renderShoppingList() {
     });
     checkTd.appendChild(checkbox);
     tr.appendChild(checkTd);
+
+    tr.appendChild(createDisplayCell(personLabel(item.person))); // 「對象」欄位，方便一次看兩人資料時分辨
 
     tr.appendChild(createDisplayCell(item.item));
     tr.appendChild(createDisplayCell(item.note));
@@ -937,6 +991,8 @@ function startEditVisitRow(index, tr) {
   const editableKeys = ["caregiver1", "caregiver2", "note"];
 
   tr.innerHTML = ""; // 清空這一列，改用輸入框（或唯讀文字）重畫
+
+  tr.appendChild(createDisplayCell(personLabel(item.person))); // 「對象」欄位維持唯讀
 
   fields.forEach((field) => {
     if (editableKeys.includes(field.key)) {
@@ -997,9 +1053,18 @@ function startEdit(category, index, tr) {
 
   tr.innerHTML = ""; // 清空這一列，改用輸入框重畫
 
+  // 長照申請進度／已代墊款項：「對象」欄位排在最前面，維持唯讀
+  if (category === "ltc" || category === "advance") {
+    tr.appendChild(createDisplayCell(personLabel(item.person)));
+  }
+
   // 依欄位建立輸入框
-  fields.forEach((field) => {
+  fields.forEach((field, fieldIndex) => {
     tr.appendChild(createEditCell(field, item[field.key]));
+    // 需要購買清單：「對象」欄位排在「已購買」之後，所以第一個欄位建立完就插入
+    if (category === "shopping" && fieldIndex === 0) {
+      tr.appendChild(createDisplayCell(personLabel(item.person)));
+    }
   });
 
   // 「儲存」跟「取消」按鈕
@@ -1240,11 +1305,10 @@ function setupVisitSearch() {
   const caregiverInput = document.getElementById("visit-search-caregiver");
   const statusInput = document.getElementById("visit-search-status");
   const searchBtn = document.getElementById("visit-search-btn");
-  const clearBtn = document.getElementById("visit-search-clear-btn");
 
   // 保護機制：如果 index.html 版本不對、找不到搜尋列的元件，
   // 就直接跳過設定，避免整個網站的程式碼中斷、其他分頁也不能用
-  if (!startInput || !endInput || !caregiverInput || !statusInput || !searchBtn || !clearBtn) {
+  if (!startInput || !endInput || !caregiverInput || !statusInput || !searchBtn) {
     console.warn("找不到看診記錄的搜尋列元件，已略過搜尋功能設定。");
     return;
   }
@@ -1270,15 +1334,6 @@ function setupVisitSearch() {
   // 「顯示範圍」跟檢查排程一樣，改變下拉選單就立刻套用，不用按搜尋
   statusInput.addEventListener("change", () => {
     searchFilters.visit.status = statusInput.value;
-    renderList("visit");
-  });
-
-  clearBtn.addEventListener("click", () => {
-    startInput.value = "";
-    caregiverInput.value = "";
-    endInput.value = "";
-    statusInput.value = "valid"; // 顯示範圍也一併重設回預設的「未過期」
-    searchFilters.visit = { start: "", end: "", caregiver: "", status: "valid" };
     renderList("visit");
   });
 }
@@ -1341,6 +1396,75 @@ function setupExamFilters() {
   });
 }
 
+// 設定看診時間表／長照申請進度／購物墊款清單這三個頁簽的「對象」下拉選單
+// 選擇「全部」可以同時看到爸爸媽媽的資料，方便小孩不用切換頭像也能查看
+function setupTabPersonFilters() {
+  const visitSelect = document.getElementById("visit-person-filter");
+  const ltcSelect = document.getElementById("ltc-person-filter");
+  const advanceSelect = document.getElementById("advance-person-filter");
+
+  if (!visitSelect || !ltcSelect || !advanceSelect) {
+    console.warn("找不到「對象」篩選下拉選單，已略過設定。");
+    return;
+  }
+
+  visitSelect.addEventListener("change", () => {
+    tabPersonFilter.visit = visitSelect.value;
+    renderList("visit");
+  });
+
+  ltcSelect.addEventListener("change", () => {
+    tabPersonFilter.ltc = ltcSelect.value;
+    renderList("ltc");
+  });
+
+  advanceSelect.addEventListener("change", () => {
+    tabPersonFilter.advance = advanceSelect.value;
+    renderList("advance");
+    renderShoppingList();
+  });
+}
+
+// 這三個下拉選單各自對應的 id
+const TAB_PERSON_FILTER_SELECT_IDS = {
+  visit: "visit-person-filter",
+  ltc: "ltc-person-filter",
+  advance: "advance-person-filter",
+};
+
+// 下拉選單選項要顯示的中文字
+const TAB_PERSON_FILTER_OPTION_LABELS = { dad: "爸爸", mom: "媽媽", all: "全部" };
+
+// 依照目前選擇的人物（上方頭像），重新排列三個「對象」下拉選單的選項：
+// 只留「目前人物」（排第一個、預設選中）跟「全部」（排第二個）這兩個選項
+function updateTabPersonFilterSelectOptions() {
+  const optionOrder = [currentPerson, "all"];
+
+  Object.keys(TAB_PERSON_FILTER_SELECT_IDS).forEach((tabKey) => {
+    const select = document.getElementById(TAB_PERSON_FILTER_SELECT_IDS[tabKey]);
+    if (!select) {
+      return;
+    }
+    select.innerHTML = ""; // 清空原本的選項，改用新的順序重建
+    optionOrder.forEach((value) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = TAB_PERSON_FILTER_OPTION_LABELS[value];
+      select.appendChild(option);
+    });
+    select.value = tabPersonFilter[tabKey];
+  });
+}
+
+// 切換上方頭像（爸爸／媽媽）時呼叫：把三個「對象」下拉選單的預設值都改成目前選擇的人物，
+// 並且重新排列選項順序，方便使用者一打開就是看目前選擇的這個人
+function applyPersonDefaultToTabFilters() {
+  Object.keys(TAB_PERSON_FILTER_SELECT_IDS).forEach((tabKey) => {
+    tabPersonFilter[tabKey] = currentPerson;
+  });
+  updateTabPersonFilterSelectOptions();
+}
+
 // ---------------------------------------
 // 人物切換：爸爸／媽媽
 // ---------------------------------------
@@ -1363,6 +1487,9 @@ function setupPersonSwitcher() {
       // 更新按鈕的選中樣式
       buttons.forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
+
+      // 看診時間表／長照申請進度／購物墊款清單的「對象」下拉選單，預設也跟著切換成這個人
+      applyPersonDefaultToTabFilters();
 
       // 重新畫出檢查排程／照顧記錄（這些還是存在 localStorage，切換很快）
       renderAll();
@@ -1707,6 +1834,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   setupVisitSearch(); // 設定看診記錄的日期搜尋功能
   setupCameraFeature(); // 設定「拍照新增」功能（檢查排程、看診時間表）
+  setupTabPersonFilters(); // 設定看診時間表／長照申請進度／購物墊款清單的「對象」下拉選單
+  applyPersonDefaultToTabFilters(); // 一開始預設看「爸爸」的資料，下拉選單順序也對應調整
 
   // 幫每個頁簽的「日期」表頭加上點擊排序功能（病歷資料的表頭是動態產生的，不用在這裡設定）
   ["exam", "visit", "care", "ltc", "advance"].forEach((category) => {

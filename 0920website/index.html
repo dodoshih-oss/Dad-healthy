@@ -139,6 +139,12 @@
       <!-- 這裡的資料都是從 Google 行事曆同步過來的，不開放手動新增，只提供搜尋查看
            只有「照顧者①」「照顧者②」「備註」這三欄可以在網站上編輯 -->
       <div class="search-bar">
+        <label>對象：
+          <select id="visit-person-filter">
+            <option value="dad" selected>爸爸</option>
+            <option value="all">全部</option>
+          </select>
+        </label>
         <label>日期起：<input type="date" id="visit-search-start" /></label>
         <label>日期迄：<input type="date" id="visit-search-end" /></label>
         <label>照顧者：
@@ -159,11 +165,10 @@
           </select>
         </label>
         <button type="button" id="visit-search-btn">搜尋</button>
-        <button type="button" id="visit-search-clear-btn">清除搜尋</button>
       </div>
 
       <table class="visit-table">
-        <thead><tr><th id="visit-date-header" class="date-sort-header">日期</th><th>時間</th><th>醫院 / 科別</th><th>照顧①</th><th>照顧②</th><th>備註</th><th></th></tr></thead>
+        <thead><tr><th>對象</th><th id="visit-date-header" class="date-sort-header">日期</th><th>時間</th><th>醫院 / 科別</th><th>照顧①</th><th>照顧②</th><th>備註</th><th></th></tr></thead>
         <tbody id="visit-list"></tbody>
       </table>
 
@@ -212,6 +217,16 @@
     <!-- ===== 長照申請進度 ===== -->
     <section id="ltc" class="tab-content">
       <h2>長照申請進度 / 資料</h2>
+
+      <div class="search-bar">
+        <label>對象：
+          <select id="ltc-person-filter">
+            <option value="dad" selected>爸爸</option>
+            <option value="all">全部</option>
+          </select>
+        </label>
+      </div>
+
       <form id="ltc-form" class="add-form">
         <input type="text" name="item" placeholder="申請項目（例如：長照2.0評估）" required />
         <select name="status" required>
@@ -226,7 +241,7 @@
         <button type="submit">新增項目</button>
       </form>
       <table class="ltc-table">
-        <thead><tr><th>申請項目</th><th>狀態</th><th id="ltc-date-header" class="date-sort-header">日期</th><th>備註</th><th></th></tr></thead>
+        <thead><tr><th>對象</th><th>申請項目</th><th>狀態</th><th id="ltc-date-header" class="date-sort-header">日期</th><th>備註</th><th></th></tr></thead>
         <tbody id="ltc-list"></tbody>
       </table>
     </section>
@@ -234,6 +249,16 @@
     <!-- ===== 購物/墊款清單 ===== -->
     <section id="advance" class="tab-content">
       <h2>購物/墊款清單</h2>
+
+      <!-- 這個下拉選單同時控制下面「已代墊款項」跟「需要購買清單」兩個區塊要看誰的資料 -->
+      <div class="search-bar">
+        <label>對象：
+          <select id="advance-person-filter">
+            <option value="dad" selected>爸爸</option>
+            <option value="all">全部</option>
+          </select>
+        </label>
+      </div>
 
       <!-- 已代墊款項：原本的代墊款紀錄，用獨立區塊跟「需要購買清單」分開，避免混淆 -->
       <div class="section-block section-block--advance">
@@ -261,7 +286,7 @@
           <button type="submit">新增紀錄</button>
         </form>
         <table>
-          <thead><tr><th id="advance-date-header" class="date-sort-header">日期</th><th>項目</th><th>金額</th><th>代墊款人</th><th>備註</th><th></th></tr></thead>
+          <thead><tr><th>對象</th><th id="advance-date-header" class="date-sort-header">日期</th><th>項目</th><th>金額</th><th>代墊款人</th><th>備註</th><th></th></tr></thead>
           <tbody id="advance-list"></tbody>
         </table>
       </div>
@@ -276,7 +301,7 @@
           <button type="submit">新增項目</button>
         </form>
         <table class="shopping-table">
-          <thead><tr><th>已購買</th><th>項目</th><th>備註</th><th></th></tr></thead>
+          <thead><tr><th>已購買</th><th>對象</th><th>項目</th><th>備註</th><th></th></tr></thead>
           <tbody id="shopping-list"></tbody>
         </table>
       </div>

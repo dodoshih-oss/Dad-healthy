@@ -240,14 +240,15 @@ main {
   height: 18px;
 }
 
-/* ===== 搜尋區（目前只有看診記錄分頁使用） ===== */
+/* ===== 篩選／搜尋區：全站統一用淺藍色底 + 左邊藍色色條，方便跟下面的新增表單分開 ===== */
 .search-bar {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  background-color: #f5f7fa;
-  border: 1px solid #ddd;
+  background-color: #eaf1fa;
+  border: 1px solid #cddbea;
+  border-left: 5px solid #33608c;
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 16px;
@@ -276,20 +277,24 @@ main {
   background-color: #3a6347;
 }
 
-#visit-search-clear-btn {
-  background-color: #999;
-}
 
-#visit-search-clear-btn:hover {
-  background-color: #777;
-}
-
-/* ===== 新增資料的表單 ===== */
+/* ===== 新增資料的表單：全站統一用淺綠色底 + 左邊綠色色條，跟上面的篩選區做出色塊區分 ===== */
 .add-form {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  background-color: #eef7f0;
+  border: 1px solid #cfe8d8;
+  border-left: 5px solid #4a7c59;
+  border-radius: 8px;
+  padding: 12px;
   margin-bottom: 20px;
+}
+
+/* 「已代墊款項」「需要購買清單」本身已經有各自的主題色區塊了，
+   裡面的新增表單改用半透明白底，避免兩層顏色互相衝突 */
+.section-block .add-form {
+  background-color: rgba(255, 255, 255, 0.65);
 }
 
 .add-form input,
@@ -511,10 +516,12 @@ footer {
   background-color: #274a6e;
 }
 
-/* 拍照辨識完後，先讓使用者確認/修改資料的表單，用淺藍底跟一般新增表單區分 */
+/* 拍照辨識完後，先讓使用者確認/修改資料的表單，維持跟篩選區一樣的淺藍色系，
+   提醒使用者「這是要再次確認的資料」，跟一般新增表單（綠色）做出區分 */
 .manual-add-form {
-  background-color: #f2f6fb;
+  background-color: #eaf1fa;
   border: 1px solid #cddbea;
+  border-left: 5px solid #33608c;
   border-radius: 8px;
   padding: 12px;
 }
