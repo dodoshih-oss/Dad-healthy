@@ -86,7 +86,7 @@
 
     <!-- ===== 檢查排程 ===== -->
     <section id="exam" class="tab-content">
-      <h2>檢查排程</h2>
+      <h2>檢查排程 <button type="button" id="exam-camera-btn" class="camera-btn">📷 拍照新增</button></h2>
 
       <!-- 篩選區：檢查排程的資料是從醫院系統匯入的，不開放手動新增，只提供篩選查看 -->
       <div class="search-bar">
@@ -108,16 +108,33 @@
       </div>
 
       <!-- 三種單據合併成同一個表格，欄位對齊，手機上比較好讀
-           資料都是從醫院系統匯入的，不開放新增／編輯／刪除，只提供篩選查看 -->
+           資料主要是從醫院系統匯入的，不開放直接編輯／刪除，
+           但可以用「拍照新增」快速補一筆新的資料進來 -->
       <table>
-        <thead><tr><th>類別</th><th>科別／項目</th><th>醫師</th><th>日期</th><th>地點／檢體</th></tr></thead>
+        <thead><tr><th>類別</th><th>科別／項目</th><th>醫師</th><th id="exam-date-header" class="date-sort-header">日期</th><th>地點／檢體</th></tr></thead>
         <tbody id="exam-list"></tbody>
       </table>
+
+      <!-- 拍照辨識完的結果會先填在這裡，讓使用者確認或修改，按「確認新增」才會真的存進資料 -->
+      <form id="exam-manual-form" class="add-form manual-add-form" style="display:none;">
+        <select name="examType" required>
+          <option value="labTest">檢驗單</option>
+          <option value="examCheck">檢查單</option>
+          <option value="radiology">放射單</option>
+        </select>
+        <input type="text" name="name" placeholder="科別／項目" required />
+        <input type="text" name="doctor" placeholder="醫師" />
+        <input type="date" name="date1" placeholder="日期" required />
+        <input type="date" name="date2" placeholder="迄日（僅檢驗單需要）" />
+        <input type="text" name="place" placeholder="地點／檢體" />
+        <button type="submit">確認新增</button>
+        <button type="button" id="exam-manual-cancel-btn">取消</button>
+      </form>
     </section>
 
     <!-- ===== 看診時間表 ===== -->
     <section id="visit" class="tab-content">
-      <h2>看診時間表</h2>
+      <h2>看診時間表 <button type="button" id="visit-camera-btn" class="camera-btn">📷 拍照新增</button></h2>
 
       <!-- 這裡的資料都是從 Google 行事曆同步過來的，不開放手動新增，只提供搜尋查看
            只有「照顧者①」「照顧者②」「備註」這三欄可以在網站上編輯 -->
@@ -146,9 +163,35 @@
       </div>
 
       <table class="visit-table">
-        <thead><tr><th>日期</th><th>時間</th><th>醫院 / 科別</th><th>照顧①</th><th>照顧②</th><th>備註</th><th></th></tr></thead>
+        <thead><tr><th id="visit-date-header" class="date-sort-header">日期</th><th>時間</th><th>醫院 / 科別</th><th>照顧①</th><th>照顧②</th><th>備註</th><th></th></tr></thead>
         <tbody id="visit-list"></tbody>
       </table>
+
+      <!-- 拍照辨識完的結果會先填在這裡，讓使用者確認或修改，按「確認新增」才會真的存進資料 -->
+      <form id="visit-manual-form" class="add-form manual-add-form" style="display:none;">
+        <input type="date" name="date" required />
+        <input type="time" name="time" />
+        <input type="text" name="hospital" placeholder="醫院／科別" required />
+        <select name="caregiver1">
+          <option value="">照顧①</option>
+          <option value="甄">甄</option>
+          <option value="瑤">瑤</option>
+          <option value="慈">慈</option>
+          <option value="書">書</option>
+          <option value="沛">沛</option>
+        </select>
+        <select name="caregiver2">
+          <option value="">照顧②</option>
+          <option value="甄">甄</option>
+          <option value="瑤">瑤</option>
+          <option value="慈">慈</option>
+          <option value="書">書</option>
+          <option value="沛">沛</option>
+        </select>
+        <textarea name="note" placeholder="備註（按 Enter 可換行）" rows="2"></textarea>
+        <button type="submit">確認新增</button>
+        <button type="button" id="visit-manual-cancel-btn">取消</button>
+      </form>
     </section>
 
     <!-- ===== 照顧記錄 ===== -->
@@ -161,7 +204,7 @@
         <button type="submit">新增紀錄</button>
       </form>
       <table>
-        <thead><tr><th>日期</th><th>照顧內容</th><th>備註</th><th></th></tr></thead>
+        <thead><tr><th id="care-date-header" class="date-sort-header">日期</th><th>照顧內容</th><th>備註</th><th></th></tr></thead>
         <tbody id="care-list"></tbody>
       </table>
     </section>
@@ -183,7 +226,7 @@
         <button type="submit">新增項目</button>
       </form>
       <table class="ltc-table">
-        <thead><tr><th>申請項目</th><th>狀態</th><th>日期</th><th>備註</th><th></th></tr></thead>
+        <thead><tr><th>申請項目</th><th>狀態</th><th id="ltc-date-header" class="date-sort-header">日期</th><th>備註</th><th></th></tr></thead>
         <tbody id="ltc-list"></tbody>
       </table>
     </section>
@@ -218,7 +261,7 @@
           <button type="submit">新增紀錄</button>
         </form>
         <table>
-          <thead><tr><th>日期</th><th>項目</th><th>金額</th><th>代墊款人</th><th>備註</th><th></th></tr></thead>
+          <thead><tr><th id="advance-date-header" class="date-sort-header">日期</th><th>項目</th><th>金額</th><th>代墊款人</th><th>備註</th><th></th></tr></thead>
           <tbody id="advance-list"></tbody>
         </table>
       </div>
@@ -241,12 +284,45 @@
 
   </main>
 
+  <!-- 拍照視窗：點「拍照新增」後彈出，會請求開啟相機拍照 -->
+  <div id="camera-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <h3>📷 拍照</h3>
+      <video id="camera-video" autoplay playsinline></video>
+      <canvas id="camera-canvas" style="display:none;"></canvas>
+      <div class="modal-actions">
+        <button type="button" id="camera-capture-btn">拍照</button>
+        <button type="button" id="camera-cancel-btn">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 辨識中的提示視窗：拍完照後，等文字辨識完成前顯示 -->
+  <div id="ocr-loading-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <p>🔍 正在辨識照片內容，請稍候…</p>
+    </div>
+  </div>
+
+  <!-- 資料重複提示視窗：新增前發現日期跟名稱都很像時彈出 -->
+  <div id="duplicate-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+      <h3>⚠️ 資料重複</h3>
+      <p id="duplicate-modal-message"></p>
+      <div class="modal-actions">
+        <button type="button" id="duplicate-modal-close-btn">關閉</button>
+      </div>
+    </div>
+  </div>
+
   <footer>
-    <p>點上方照片可以切換「爸爸」「媽媽」，各自的資料分開存放、互不影響。<br />病歷、檢查排程、照顧、長照申請進度、購物/墊款清單存在這台電腦的瀏覽器裡（localStorage）。<br />看診時間表已改成連線 Supabase 資料庫，換電腦打開也看得到，但需要能連上網路。</p>
+    <p>點上方照片可以切換「爸爸」「媽媽」，各自的資料分開存放、互不影響。<br />病歷資料、看診時間表、長照申請進度、購物/墊款清單都已連線 Supabase 資料庫，不管用哪一台電腦或手機打開，看到的都是同一份最新資料，但需要能連上網路。<br />檢查排程、照顧記錄則還是存在這台電腦的瀏覽器裡（localStorage）。</p>
   </footer>
 
   <!-- Supabase 官方 JS 函式庫（從網路載入），看診記錄要靠它跟資料庫溝通 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <!-- Tesseract.js（從網路載入）：讓瀏覽器可以直接辨識照片裡的文字，不需要另外架伺服器 -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
