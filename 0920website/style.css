@@ -422,6 +422,20 @@ th, td {
   margin-top: 6px;
 }
 
+/* AI 整理摘要：改用藍紫色，跟上面用程式規則整理的摘要做出區分 */
+.medical-summary--ai {
+  background-color: #f1eefb;
+  border-left-color: #6c4ab6;
+  margin-top: 12px;
+}
+
+.ai-summary-updated {
+  margin-left: 8px;
+  font-size: 12px;
+  color: #666;
+  font-weight: normal;
+}
+
 /* 病歷資料每個分類的標題 */
 .medical-group-title {
   color: #4a7c59;
