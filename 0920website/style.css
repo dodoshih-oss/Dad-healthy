@@ -344,17 +344,22 @@ th, td {
   white-space: pre-wrap; /* 保留備註裡使用者按 Enter 換行的效果 */
 }
 
-/* 看診時間表：日期、時間欄位放寬，不要被擠到換行；醫院/科別欄位縮小，資料多時可以換行 */
-.visit-table th:nth-child(1),
-.visit-table td:nth-child(1),
+/* 看診時間表欄位順序：對象、日期、時間、醫院/科別、照顧①、照顧②、備註
+   日期欄位縮小、資料太長可以換行；時間欄位放寬不換行；醫院/科別欄位加寬 */
 .visit-table th:nth-child(2),
 .visit-table td:nth-child(2) {
-  white-space: nowrap;
+  max-width: 80px;
+  word-break: break-word;
 }
 
 .visit-table th:nth-child(3),
 .visit-table td:nth-child(3) {
-  max-width: 120px;
+  white-space: nowrap;
+}
+
+.visit-table th:nth-child(4),
+.visit-table td:nth-child(4) {
+  max-width: 220px;
   word-break: break-word;
 }
 
@@ -371,8 +376,7 @@ th, td {
 
 .medical-table th:nth-child(2),
 .medical-table td:nth-child(2) {
-  width: 10%;
-  white-space: nowrap;
+  width: 14%;
 }
 
 .medical-table th:nth-child(3),
@@ -382,12 +386,12 @@ th, td {
 
 .medical-table th:nth-child(4),
 .medical-table td:nth-child(4) {
-  width: 38%;
+  width: 32%;
 }
 
 .medical-table th:nth-child(5),
 .medical-table td:nth-child(5) {
-  width: 10%;
+  width: 12%;
 }
 
 .medical-table th:nth-child(1),
@@ -465,7 +469,20 @@ th {
   padding: 6px 10px;
   cursor: pointer;
   font-size: 12px;
-  margin-left: 4px;
+}
+
+/* 「編輯」「刪除」按鈕：固定寬度、每個按鈕獨立一行、置中對齊，
+   這樣不管備註欄位內容有幾行，每一列的按鈕位置都會整齊對齊 */
+.edit-btn,
+.delete-btn {
+  display: block;
+  width: 56px;
+  margin: 0 auto 6px auto;
+}
+
+.edit-btn:last-child,
+.delete-btn:last-child {
+  margin-bottom: 0;
 }
 
 .delete-btn:hover {
@@ -588,10 +605,178 @@ footer {
   color: white;
 }
 
-/* 手機版：表單欄位改為單欄排列 */
+/* ===== RWD（響應式設計）：手機/平板螢幕變窄時，整個網站自動調整排版 =====
+   做法很簡單：螢幕越窄，留白/字體越小；表格太寬放不下時，允許「左右滑動」查看，
+   而不是把欄位硬擠在一起造成文字歪掉、跑版。 */
+
+/* 平板尺寸（螢幕寬度 900px 以下）：內容區塊留白稍微縮小 */
+@media (max-width: 900px) {
+  main {
+    padding: 0 10px;
+  }
+}
+
+/* 手機尺寸（螢幕寬度 600px 以下） */
 @media (max-width: 600px) {
+  header {
+    padding: 14px 10px;
+  }
+
+  header h1 {
+    font-size: 20px;
+  }
+
+  .avatar {
+    width: 60px;
+    height: 60px;
+  }
+
+  .person-switcher {
+    gap: 10px;
+  }
+
+  main {
+    margin: 10px auto;
+    padding: 0 8px;
+  }
+
+  .tab-content {
+    padding: 12px;
+  }
+
+  .tabs {
+    padding: 10px;
+    gap: 6px;
+  }
+
+  .tab-btn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  /* 表單欄位改為單欄排列，手機上比較好點、好輸入 */
   .add-form input,
-  .add-form select {
+  .add-form select,
+  .add-form textarea,
+  .search-bar input,
+  .search-bar select {
     flex: 1 1 100%;
+  }
+
+  .search-bar,
+  .add-form {
+    padding: 10px;
+  }
+
+  /* 表格重點：手機螢幕太窄時，表格維持原本欄寬（不硬擠），
+     外面用左右滑動的方式查看，欄位才不會歪掉、字擠成一團 */
+  .tab-content,
+  .section-block {
+    overflow-x: auto;
+  }
+
+  table {
+    min-width: 560px; /* 表格最小寬度，寬度不夠時就出現左右捲軸 */
+  }
+
+  .medical-table {
+    min-width: 480px;
+  }
+
+  /* 「已代墊款項」「需要購買清單」欄位比較少，改成不強制最小寬度，
+     讓表格直接縮小、文字自動換行塞進手機畫面，盡量不要出現左右捲軸 */
+  .section-block {
+    overflow-x: visible;
+  }
+
+  .advance-table,
+  .shopping-table {
+    min-width: 0;
+    table-layout: fixed;
+    font-size: 12px;
+  }
+
+  .advance-table th,
+  .advance-table td,
+  .shopping-table th,
+  .shopping-table td {
+    padding: 6px 4px;
+  }
+
+  /* 已代墊款項欄位順序：對象、日期、項目、金額、代墊款人、備註、操作 */
+  .advance-table th:nth-child(1),
+  .advance-table td:nth-child(1) {
+    width: 10%;
+  }
+
+  .advance-table th:nth-child(2),
+  .advance-table td:nth-child(2) {
+    width: 16%;
+  }
+
+  .advance-table th:nth-child(3),
+  .advance-table td:nth-child(3) {
+    width: 15%;
+  }
+
+  .advance-table th:nth-child(4),
+  .advance-table td:nth-child(4) {
+    width: 13%;
+  }
+
+  .advance-table th:nth-child(5),
+  .advance-table td:nth-child(5) {
+    width: 10%;
+  }
+
+  .advance-table th:nth-child(6),
+  .advance-table td:nth-child(6) {
+    width: 22%;
+  }
+
+  .advance-table th:nth-child(7),
+  .advance-table td:nth-child(7) {
+    width: 14%;
+  }
+
+  /* 需要購買清單欄位順序：已購買、對象、項目、備註、操作 */
+  .shopping-table th:nth-child(1),
+  .shopping-table td:nth-child(1) {
+    width: 14%;
+  }
+
+  .shopping-table th:nth-child(2),
+  .shopping-table td:nth-child(2) {
+    width: 14%;
+  }
+
+  .shopping-table th:nth-child(3),
+  .shopping-table td:nth-child(3) {
+    width: 32%;
+  }
+
+  .shopping-table th:nth-child(4),
+  .shopping-table td:nth-child(4) {
+    width: 26%;
+  }
+
+  .shopping-table th:nth-child(5),
+  .shopping-table td:nth-child(5) {
+    width: 14%;
+  }
+
+  .advance-table .edit-btn,
+  .advance-table .delete-btn,
+  .shopping-table .edit-btn,
+  .shopping-table .delete-btn {
+    width: 44px;
+    font-size: 11px;
+    padding: 4px 2px;
+  }
+
+  /* 彈出視窗（相機拍照等）在手機上寬度改滿版一點 */
+  .modal-box {
+    width: 92%;
+    padding: 16px;
   }
 }
