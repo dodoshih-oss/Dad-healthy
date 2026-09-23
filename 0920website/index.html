@@ -43,11 +43,13 @@
       <h2>病歷資料</h2>
 
       <!-- AI 整理摘要：由後端排程每天請 AI 讀取這個人所有分頁的資料，整理成一段話存進 Supabase，
-           網頁只負責顯示，不會即時呼叫 AI（避免金鑰外洩），所以內容是「昨天為止」的整理結果 -->
-      <div class="medical-summary medical-summary--ai">
+           網頁只負責顯示，不會即時呼叫 AI（避免金鑰外洩），所以內容是「昨天為止」的整理結果
+           預設只顯示前三行，點擊整個區塊可以展開看完整內容，再點一次可以收合 -->
+      <div class="medical-summary medical-summary--ai" id="ai-summary-box">
         <strong>🤖 AI 整理摘要</strong>
         <span id="ai-summary-updated" class="ai-summary-updated"></span>
-        <div id="ai-summary-text" class="medical-summary-text"></div>
+        <div id="ai-summary-text" class="medical-summary-text medical-summary-text--collapsed"></div>
+        <div class="medical-summary-toggle-hint" id="ai-summary-toggle-hint">點擊展開全部內容 ▾</div>
       </div>
 
       <!-- 搜尋區：可以依病症分類篩選，只看某一科的病歷；選「全部」會顯示所有分類 -->

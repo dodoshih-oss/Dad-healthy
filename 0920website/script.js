@@ -856,6 +856,42 @@ async function refreshAiSummary() {
     updatedEl.textContent =
       `（最後更新：${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}）`;
   }
+
+  // 換了新內容（例如切換爸爸／媽媽），重新收合回預設的 3 行狀態
+  collapseAiSummary();
+}
+
+// 收合 AI 摘要區塊，只顯示前 3 行
+function collapseAiSummary() {
+  const textEl = document.getElementById("ai-summary-text");
+  const hintEl = document.getElementById("ai-summary-toggle-hint");
+  if (!textEl || !hintEl) {
+    return;
+  }
+  textEl.classList.remove("medical-summary-text--expanded");
+  textEl.classList.add("medical-summary-text--collapsed");
+  hintEl.textContent = "點擊展開全部內容 ▾";
+}
+
+// 設定「AI 整理摘要」區塊：點擊整個區塊可以展開看完整內容，再點一次收合回 3 行
+function setupAiSummaryToggle() {
+  const box = document.getElementById("ai-summary-box");
+  const textEl = document.getElementById("ai-summary-text");
+  const hintEl = document.getElementById("ai-summary-toggle-hint");
+  if (!box || !textEl || !hintEl) {
+    return;
+  }
+
+  box.addEventListener("click", () => {
+    const isExpanded = textEl.classList.contains("medical-summary-text--expanded");
+    if (isExpanded) {
+      collapseAiSummary();
+    } else {
+      textEl.classList.remove("medical-summary-text--collapsed");
+      textEl.classList.add("medical-summary-text--expanded");
+      hintEl.textContent = "點擊收合 ▴";
+    }
+  });
 }
 
 // 病歷資料專用的畫面渲染：依「病症分類」分組顯示，
@@ -1942,6 +1978,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   setupVisitSearch(); // 設定看診記錄的日期搜尋功能
   setupCameraFeature(); // 設定「拍照新增」功能（檢查排程、看診時間表）
+  setupAiSummaryToggle(); // 設定「AI 整理摘要」區塊的展開／收合功能
   setupTabPersonFilters(); // 設定看診時間表／長照申請進度／購物墊款清單的「對象」下拉選單
   setupKeywordSearchInputs(); // 設定每個頁簽搜尋列的「關鍵字」搜尋欄位
   applyPersonDefaultToTabFilters(); // 一開始預設看「爸爸」的資料，下拉選單順序也對應調整
