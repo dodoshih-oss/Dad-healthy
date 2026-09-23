@@ -600,6 +600,51 @@ function matchesTabPersonFilter(category, item) {
   return (item.person || "dad") === filterValue;
 }
 
+// ---------------------------------------
+// 關鍵字搜尋：每個頁簽的搜尋列都可以輸入關鍵字，直接比對這個分類（CONFIG 裡）
+// 設定的所有文字欄位，只要有一個欄位包含關鍵字（不分大小寫）就算符合
+// ---------------------------------------
+
+// 各頁簽目前輸入的關鍵字，key 是 CONFIG 裡的分類名稱；"exam" 比較特別，
+// 因為檢查排程是三個分類（labTest／examCheck／radiology）合併顯示，共用同一個關鍵字
+const keywordFilters = {
+  medical: "",
+  exam: "",
+  visit: "",
+  care: "",
+  ltc: "",
+  advance: "",
+  shopping: "",
+};
+
+// 判斷某個分類的一筆資料，欄位內容是否包含指定的關鍵字
+function textIncludesKeyword(category, item, keyword) {
+  if (!keyword) {
+    return true; // 沒有輸入關鍵字，全部顯示
+  }
+  const fields = (CONFIG[category] && CONFIG[category].fields) || [];
+  const combinedText = fields
+    .filter((field) => field.type !== "checkbox") // 「已購買」是打勾方塊，不用比對文字
+    .map((field) => String(item[field.key] || ""))
+    .join(" ")
+    .toLowerCase();
+  return combinedText.includes(keyword);
+}
+
+// 一般分類（病歷資料／看診時間表／照顧記錄／長照申請進度／購物墊款清單）的關鍵字比對，
+// 直接用分類自己的關鍵字篩選狀態
+function matchesKeywordFilter(category, item) {
+  const keyword = (keywordFilters[category] || "").trim().toLowerCase();
+  return textIncludesKeyword(category, item, keyword);
+}
+
+// 檢查排程專用：三個分類（檢驗單／檢查單／放射單）共用「exam」這個關鍵字篩選狀態，
+// 但各自的欄位設定不同，所以比對時要傳入這一列實際的分類
+function matchesExamKeywordFilter(category, item) {
+  const keyword = (keywordFilters.exam || "").trim().toLowerCase();
+  return textIncludesKeyword(category, item, keyword);
+}
+
 // 日期格式：完整顯示「年/月/日」，例如 "2026/09/23"
 // 支援 "2026-09-23" 或 "2026-09-23T15:01" 這兩種格式
 function formatShortDate(rawValue) {
@@ -725,6 +770,7 @@ function renderList(category) {
     rows = rows.filter((row) => matchesPersonFilter(row.item));
   }
   rows = rows.filter((row) => matchesSearchFilter(category, row.item)); // 看診時間表的日期起迄、照顧者篩選
+  rows = rows.filter((row) => matchesKeywordFilter(category, row.item)); // 關鍵字搜尋
 
   // 依「日期」欄位排序，方向由點擊表頭決定（見 dateSortDirection）
   if (fields.some((field) => field.key === "date")) {
@@ -857,6 +903,7 @@ function renderMedicalList() {
   // 把資料跟「原始索引」綁在一起，這樣編輯／刪除才能對應到 allData.medical 正確的位置
   let rows = allData.medical.map((item, index) => ({ item, index }));
   rows = rows.filter((row) => matchesPersonFilter(row.item)); // 只顯示目前選擇的人物的資料
+  rows = rows.filter((row) => matchesKeywordFilter("medical", row.item)); // 關鍵字搜尋
 
   // 病症分類搜尋：選「全部」以外的分類時，只留下該分類的資料
   const groupOrderToShow =
@@ -939,6 +986,11 @@ function renderShoppingList() {
 
   let rows = allData.shopping.map((item, index) => ({ item, index }));
   rows = rows.filter((row) => matchesTabPersonFilter("shopping", row.item)); // 用「對象」下拉選單篩選
+  // 「已代墊款項」「需要購買清單」共用同一個關鍵字（都算在「advance」這個頁簽底下）
+  rows = rows.filter((row) => {
+    const keyword = (keywordFilters.advance || "").trim().toLowerCase();
+    return textIncludesKeyword("shopping", row.item, keyword);
+  });
 
   rows.forEach(({ item, index }) => {
     const tr = document.createElement("tr");
@@ -1200,6 +1252,7 @@ function renderExamList() {
     (row) => examFilters.category === "all" || examFilters.category === row.category
   );
   rows = rows.filter((row) => matchesExamStatusFilter(row.category, row.item));
+  rows = rows.filter((row) => matchesExamKeywordFilter(row.category, row.item)); // 關鍵字搜尋
 
   // 依「有效期限」排序，方向由點擊表頭決定（見 dateSortDirection）
   const examDirection = dateSortDirection.exam || "desc";
@@ -1304,11 +1357,12 @@ function setupVisitSearch() {
   const endInput = document.getElementById("visit-search-end");
   const caregiverInput = document.getElementById("visit-search-caregiver");
   const statusInput = document.getElementById("visit-search-status");
+  const keywordInput = document.getElementById("visit-keyword-search");
   const searchBtn = document.getElementById("visit-search-btn");
 
   // 保護機制：如果 index.html 版本不對、找不到搜尋列的元件，
   // 就直接跳過設定，避免整個網站的程式碼中斷、其他分頁也不能用
-  if (!startInput || !endInput || !caregiverInput || !statusInput || !searchBtn) {
+  if (!startInput || !endInput || !caregiverInput || !statusInput || !keywordInput || !searchBtn) {
     console.warn("找不到看診記錄的搜尋列元件，已略過搜尋功能設定。");
     return;
   }
@@ -1321,14 +1375,24 @@ function setupVisitSearch() {
     status: statusInput.value,
   };
 
-  searchBtn.addEventListener("click", () => {
+  const runVisitSearch = () => {
     searchFilters.visit = {
       start: startInput.value, // 空字串代表不限制起始日
       end: endInput.value, // 空字串代表不限制結束日
       caregiver: caregiverInput.value, // 空字串代表不限照顧者
       status: statusInput.value, // 未過期／全部／已過期
     };
+    keywordFilters.visit = keywordInput.value; // 要按「搜尋」才正式套用關鍵字
     renderList("visit");
+  };
+
+  searchBtn.addEventListener("click", runVisitSearch);
+  // 在關鍵字欄位按 Enter，效果跟按「搜尋」按鈕一樣
+  keywordInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      runVisitSearch();
+    }
   });
 
   // 「顯示範圍」跟檢查排程一樣，改變下拉選單就立刻套用，不用按搜尋
@@ -1372,6 +1436,50 @@ function setupMedicalSearch() {
   categorySelect.addEventListener("change", () => {
     medicalSearchCategory = categorySelect.value;
     renderMedicalList();
+  });
+}
+
+// 設定每個頁簽搜尋列裡的「關鍵字」輸入框：要按旁邊的「搜尋」按鈕（或按 Enter）才會正式套用篩選，
+// 不是打字的時候就即時篩選，避免資料一直跳動
+// 看診時間表比較特別：關鍵字跟原本的「搜尋」按鈕共用，設定寫在 setupVisitSearch 裡
+function setupKeywordSearchInputs() {
+  const keywordInputConfig = [
+    { inputId: "medical-keyword-search", btnId: "medical-keyword-search-btn", tabKey: "medical", render: renderMedicalList },
+    { inputId: "exam-keyword-search", btnId: "exam-keyword-search-btn", tabKey: "exam", render: renderExamList },
+    { inputId: "care-keyword-search", btnId: "care-keyword-search-btn", tabKey: "care", render: () => renderList("care") },
+    { inputId: "ltc-keyword-search", btnId: "ltc-keyword-search-btn", tabKey: "ltc", render: () => renderList("ltc") },
+    {
+      inputId: "advance-keyword-search",
+      btnId: "advance-keyword-search-btn",
+      tabKey: "advance",
+      render: () => {
+        renderList("advance");
+        renderShoppingList(); // 「需要購買清單」共用同一個關鍵字，也要一起重畫
+      },
+    },
+  ];
+
+  keywordInputConfig.forEach(({ inputId, btnId, tabKey, render }) => {
+    const input = document.getElementById(inputId);
+    const btn = document.getElementById(btnId);
+    if (!input || !btn) {
+      console.warn(`找不到「${inputId}」關鍵字搜尋欄位或按鈕，已略過設定。`);
+      return;
+    }
+
+    const runSearch = () => {
+      keywordFilters[tabKey] = input.value;
+      render();
+    };
+
+    btn.addEventListener("click", runSearch);
+    // 在輸入框裡按 Enter，效果跟按「搜尋」按鈕一樣，方便使用
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        runSearch();
+      }
+    });
   });
 }
 
@@ -1835,6 +1943,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupVisitSearch(); // 設定看診記錄的日期搜尋功能
   setupCameraFeature(); // 設定「拍照新增」功能（檢查排程、看診時間表）
   setupTabPersonFilters(); // 設定看診時間表／長照申請進度／購物墊款清單的「對象」下拉選單
+  setupKeywordSearchInputs(); // 設定每個頁簽搜尋列的「關鍵字」搜尋欄位
   applyPersonDefaultToTabFilters(); // 一開始預設看「爸爸」的資料，下拉選單順序也對應調整
 
   // 幫每個頁簽的「日期」表頭加上點擊排序功能（病歷資料的表頭是動態產生的，不用在這裡設定）
