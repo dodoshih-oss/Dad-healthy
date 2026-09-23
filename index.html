@@ -42,11 +42,12 @@
     <section id="medical" class="tab-content active">
       <h2>病歷資料</h2>
 
-      <!-- 整體病況摘要：這段文字由 script.js 依照「各分類最新一筆病歷」自動整理產生，
-           不是寫死的內容，之後新增或修改病歷資料，這裡會自動跟著更新 -->
-      <div class="medical-summary">
-        <strong>整體病況摘要：</strong>
-        <div id="medical-summary-text" class="medical-summary-text"></div>
+      <!-- AI 整理摘要：由後端排程每天請 AI 讀取這個人所有分頁的資料，整理成一段話存進 Supabase，
+           網頁只負責顯示，不會即時呼叫 AI（避免金鑰外洩），所以內容是「昨天為止」的整理結果 -->
+      <div class="medical-summary medical-summary--ai">
+        <strong>🤖 AI 整理摘要</strong>
+        <span id="ai-summary-updated" class="ai-summary-updated"></span>
+        <div id="ai-summary-text" class="medical-summary-text"></div>
       </div>
 
       <!-- 搜尋區：可以依病症分類篩選，只看某一科的病歷；選「全部」會顯示所有分類 -->

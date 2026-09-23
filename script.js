@@ -824,55 +824,43 @@ function renderList(category) {
   });
 }
 
-// 把一段備註濃縮成一行摘要文字，太長就截斷加上「…」
-function summarizeMedicalNote(note, maxLen) {
-  if (!note) {
-    return "";
-  }
-  const oneLine = note.replace(/\n/g, "　"); // 換行改成全形空白，避免摘要被拆成好幾行
-  if (oneLine.length <= maxLen) {
-    return oneLine;
-  }
-  return oneLine.slice(0, maxLen) + "…";
-}
-
-// 整體病況摘要：不是寫死的文字，而是每次都依照「各分類目前最新一筆病歷」自動整理，
-// 只要新增或修改病歷資料，摘要就會跟著自動更新，家人一眼就能看到目前最新狀況
-function renderMedicalSummary() {
-  const el = document.getElementById("medical-summary-text");
-  if (!el) {
+// AI 整理摘要：不是網頁即時呼叫 AI（那樣要把金鑰放在網頁裡，會被任何人看到），
+// 而是由後端排程（每天固定時間）讀取這個人所有頁簽的資料，請 AI 整理成一段話後存進 Supabase 的
+// ai_summary 資料表，網頁只負責把「目前存好的內容」顯示出來，所以是「上次排程執行時」的整理結果，不是即時的
+async function refreshAiSummary() {
+  const textEl = document.getElementById("ai-summary-text");
+  const updatedEl = document.getElementById("ai-summary-updated");
+  if (!textEl || !supabaseClient) {
     return;
   }
 
-  const rows = allData.medical.filter((item) => matchesPersonFilter(item));
+  const { data, error } = await supabaseClient
+    .from("ai_summary")
+    .select("*")
+    .eq("person", currentPerson)
+    .maybeSingle();
 
-  if (rows.length === 0) {
-    el.textContent = "目前尚無病歷資料。";
+  if (error || !data) {
+    textEl.textContent = "目前尚無 AI 摘要，等待下一次排程整理。";
+    if (updatedEl) {
+      updatedEl.textContent = "";
+    }
     return;
   }
 
-  // 各病症其實會互相影響（失智／聽力／血糖腎功能／跌倒），
-  // 所以不逐一條列，改成一段整體狀況說明
-  // 「最新進度」這一段會自動抓「目前最新一筆病歷」，其他病歷更新後會跟著改變
-  const sorted = [...rows].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
-  const latest = sorted[0];
-  const latestDateLabel = formatShortDate(latest.date);
-  const latestNote = summarizeMedicalNote(latest.note, 80);
+  textEl.textContent = data.summary_text || "目前尚無 AI 摘要，等待下一次排程整理。";
 
-  const paragraph =
-    "爸爸目前同時有失智、聽力退化、血糖／血壓控制不佳、攝護腺泌尿問題，以及跌倒骨折復原等多項狀況，彼此會互相影響：" +
-    "腦部退化需要外界刺激，聽力變差會減少刺激而加重失智；血糖控制不佳則會讓腎功能持續惡化，需要長期留意。\n" +
-    `最新進度（${latestDateLabel}）：${latest.title}${latestNote ? "－" + latestNote : ""}\n` +
-    "照顧注意事項：忌甜食、勿吃太飽、多喝水；白天多安排活動、避免久坐；留意跌倒風險；並持續追蹤聽力檢測與助聽器評估進度。";
-
-  el.textContent = paragraph;
+  if (updatedEl && data.updated_at) {
+    const d = new Date(data.updated_at);
+    const pad = (n) => String(n).padStart(2, "0");
+    updatedEl.textContent =
+      `（最後更新：${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}）`;
+  }
 }
 
 // 病歷資料專用的畫面渲染：依「病症分類」分組顯示，
 // 同一分類裡的資料再依日期新到舊排序，方便看出同一種病症不同時期的變化
 function renderMedicalList() {
-  renderMedicalSummary(); // 每次重畫病歷列表，順便重新整理一次摘要
-
   const container = document.getElementById("medical-groups");
   if (!container) {
     return;
@@ -1590,7 +1578,7 @@ function setupPersonSwitcher() {
       if (supabaseClient) {
         const personName = currentPerson === "dad" ? "爸爸" : "媽媽";
         setVisitSyncStatus(`資料讀取中…（${personName}）`);
-        await Promise.all([refreshVisitList(), refreshAllSupabaseCategories()]);
+        await Promise.all([refreshVisitList(), refreshAllSupabaseCategories(), refreshAiSummary()]);
         setVisitSyncStatus(`✅ 已連線 Supabase（${personName}）`);
       }
     });
@@ -1970,7 +1958,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 全部都改成連線 Supabase，需要一點時間讀取，讀取完再畫出來
   if (supabaseClient) {
     setVisitSyncStatus("資料讀取中…");
-    await Promise.all([refreshVisitList(), refreshAllSupabaseCategories()]);
+    await Promise.all([refreshVisitList(), refreshAllSupabaseCategories(), refreshAiSummary()]);
     setVisitSyncStatus("✅ 已連線 Supabase（test0920 專案）");
   } else {
     setVisitSyncStatus("⚠️ Supabase 函式庫載入失敗，網站的資料暫時無法讀取，請確認網路連線後重新整理頁面。");
