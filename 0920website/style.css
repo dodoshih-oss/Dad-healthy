@@ -607,6 +607,17 @@ footer {
   color: white;
 }
 
+/* 刪除確認視窗：「確定刪除」用紅色提醒這是不可復原的動作，「取消」用灰色 */
+#delete-confirm-ok-btn {
+  background-color: #d9534f;
+  color: white;
+}
+
+#delete-confirm-cancel-btn {
+  background-color: #999;
+  color: white;
+}
+
 /* ===== RWD（響應式設計）：手機/平板螢幕變窄時，整個網站自動調整排版 =====
    做法很簡單：螢幕越窄，留白/字體越小；表格太寬放不下時，允許「左右滑動」查看，
    而不是把欄位硬擠在一起造成文字歪掉、跑版。 */
