@@ -805,7 +805,7 @@ function renderList(category) {
       delBtn.className = "delete-btn";
       delBtn.addEventListener("click", async () => {
         // 刪除前先跳出視窗提醒，使用者再次按「確定」才會真的刪除，避免手滑點到
-        if (!confirm("確定要刪除這筆資料嗎？刪除後無法復原。")) {
+        if (!(await confirmDelete("確定要刪除這筆資料嗎？刪除後無法復原。"))) {
           return;
         }
         if (SUPABASE_SYNCED_CATEGORIES.includes(category)) {
@@ -942,7 +942,7 @@ function renderMedicalList() {
       delBtn.textContent = "刪除";
       delBtn.className = "delete-btn";
       delBtn.addEventListener("click", async () => {
-        if (!confirm("確定要刪除這筆資料嗎？刪除後無法復原。")) {
+        if (!(await confirmDelete("確定要刪除這筆資料嗎？刪除後無法復原。"))) {
           return;
         }
         await deleteCategoryItem("medical", item); // 改成連線 Supabase 刪除
@@ -1008,7 +1008,7 @@ function renderShoppingList() {
     delBtn.textContent = "刪除";
     delBtn.className = "delete-btn";
     delBtn.addEventListener("click", async () => {
-      if (!confirm("確定要刪除這筆資料嗎？刪除後無法復原。")) {
+      if (!(await confirmDelete("確定要刪除這筆資料嗎？刪除後無法復原。"))) {
         return;
       }
       await deleteCategoryItem("shopping", item); // 改成連線 Supabase 刪除
@@ -1647,6 +1647,37 @@ function setOcrLoading(isLoading) {
 function showDuplicateModal(message) {
   document.getElementById("duplicate-modal-message").textContent = message;
   document.getElementById("duplicate-modal").style.display = "flex";
+}
+
+// 刪除確認視窗：用自己畫的視窗取代瀏覽器內建的 confirm()，
+// 這樣才不會跳出瀏覽器自己加上的網址列文字，畫面也能跟網站風格一致。
+// 回傳一個 Promise，使用者按「確定刪除」會是 true，按「取消」會是 false。
+function confirmDelete(message) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("delete-confirm-modal");
+    const messageEl = document.getElementById("delete-confirm-message");
+    const okBtn = document.getElementById("delete-confirm-ok-btn");
+    const cancelBtn = document.getElementById("delete-confirm-cancel-btn");
+
+    messageEl.textContent = message || "確定要刪除這筆資料嗎？刪除後無法復原。";
+    modal.style.display = "flex";
+
+    // 每次都重新綁定按鈕事件，避免舊的事件重複觸發
+    function cleanup(result) {
+      modal.style.display = "none";
+      okBtn.removeEventListener("click", onOk);
+      cancelBtn.removeEventListener("click", onCancel);
+      resolve(result);
+    }
+    function onOk() {
+      cleanup(true);
+    }
+    function onCancel() {
+      cleanup(false);
+    }
+    okBtn.addEventListener("click", onOk);
+    cancelBtn.addEventListener("click", onCancel);
+  });
 }
 
 // 從辨識出來的一大段文字裡，找出「日期」「時間」，剩下的文字當作名稱/科別的參考值
