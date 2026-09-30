@@ -130,6 +130,257 @@ const SUPABASE_TABLE_NAME = {
   advance: "advance_records",
 };
 
+// ---------------------------------------
+// 附件上傳功能：每一列資料後面都可以夾檔上傳（可以多筆），
+// 檔案實際存在 Supabase Storage 的 "attachments" 這個 bucket，
+// 另外用 attachments 這張表記錄「這個附件屬於哪張表、哪一筆資料」
+// ---------------------------------------
+
+// 每個分類對應到 Supabase 裡「真正的資料表名稱」（附件要記錄這個，才知道附件屬於哪張表）
+// 大部分分類都跟 SUPABASE_TABLE_NAME 一樣，只有「看診時間表」比較特別要另外補上
+const ATTACHMENT_TABLE_NAME = Object.assign({ visit: "visits" }, SUPABASE_TABLE_NAME);
+
+// 目前所有附件資料，key 是 "資料表名稱::這筆資料的id"，value 是附件陣列
+let attachmentsMap = {};
+
+// 從 Supabase 把所有附件資料一次抓回來（附件不多，一次抓全部比較單純）
+async function fetchAllAttachments() {
+  if (!supabaseClient) {
+    return;
+  }
+  const { data, error } = await supabaseClient
+    .from("attachments")
+    .select("*")
+    .order("uploaded_at", { ascending: true });
+  if (error) {
+    console.error("讀取附件資料失敗：", error);
+    return;
+  }
+  attachmentsMap = {};
+  data.forEach((row) => {
+    const key = row.source_table + "::" + row.record_id;
+    if (!attachmentsMap[key]) {
+      attachmentsMap[key] = [];
+    }
+    attachmentsMap[key].push(row);
+  });
+}
+
+// 取得某一筆資料目前已上傳的附件列表
+function getAttachmentsFor(table, recordId) {
+  return attachmentsMap[table + "::" + recordId] || [];
+}
+
+// 目前附件視窗正在操作的是哪張表、哪一筆資料
+let currentAttachmentContext = null;
+
+// 建立「附件」按鈕：有附件時顯示不同圖示（迴紋針+數字），沒有附件時只顯示迴紋針
+// 為了手機瀏覽時比較好讀，這個按鈕直接放進「編輯／刪除」那一欄，不另外佔一整欄
+function createAttachmentButton(table, recordId) {
+  if (!recordId) {
+    // 沒有 id（例如尚未存進資料庫），先不顯示附件按鈕
+    return null;
+  }
+  const list = getAttachmentsFor(table, recordId);
+  const btn = document.createElement("button");
+  btn.type = "button";
+  if (list.length > 0) {
+    btn.className = "attachment-btn attachment-btn--has-files";
+    btn.innerHTML = `📎 <span class="attachment-count">${list.length}</span>`;
+    btn.title = `已上傳 ${list.length} 個附件，點擊查看`;
+  } else {
+    btn.className = "attachment-btn";
+    btn.textContent = "📎";
+    btn.title = "上傳附件";
+  }
+  btn.addEventListener("click", () => openAttachmentModal(table, recordId));
+  return btn;
+}
+
+// 打開附件視窗，顯示這一筆資料目前的附件、可以繼續上傳新的
+function openAttachmentModal(table, recordId) {
+  currentAttachmentContext = { table, recordId };
+  const modal = document.getElementById("attachment-modal");
+  if (!modal) {
+    return;
+  }
+  renderAttachmentModalList();
+  modal.style.display = "flex";
+}
+
+function closeAttachmentModal() {
+  const modal = document.getElementById("attachment-modal");
+  if (modal) {
+    modal.style.display = "none";
+  }
+  currentAttachmentContext = null;
+  const fileInput = document.getElementById("attachment-file-input");
+  if (fileInput) {
+    fileInput.value = "";
+  }
+}
+
+// 把目前這筆資料已上傳的附件畫出來（檔名可以點擊開啟，旁邊有刪除按鈕）
+function renderAttachmentModalList() {
+  const listEl = document.getElementById("attachment-list");
+  if (!listEl || !currentAttachmentContext) {
+    return;
+  }
+  const { table, recordId } = currentAttachmentContext;
+  const list = getAttachmentsFor(table, recordId);
+
+  listEl.innerHTML = "";
+  if (list.length === 0) {
+    const emptyP = document.createElement("p");
+    emptyP.className = "attachment-empty";
+    emptyP.textContent = "目前還沒有上傳任何附件。";
+    listEl.appendChild(emptyP);
+    return;
+  }
+
+  list.forEach((att) => {
+    const row = document.createElement("div");
+    row.className = "attachment-item";
+
+    const link = document.createElement("a");
+    link.href = att.file_url;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = att.file_name;
+    row.appendChild(link);
+
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "attachment-delete-btn";
+    delBtn.textContent = "刪除";
+    delBtn.addEventListener("click", () => deleteAttachment(att));
+    row.appendChild(delBtn);
+
+    listEl.appendChild(row);
+  });
+}
+
+// 把選好的檔案上傳到 Supabase Storage，並在 attachments 表新增一筆紀錄
+async function uploadAttachmentFiles(fileList) {
+  if (!currentAttachmentContext || !supabaseClient) {
+    return;
+  }
+  const { table, recordId } = currentAttachmentContext;
+
+  for (const file of fileList) {
+    // 檔案路徑：資料表/這筆資料id/時間戳記_檔名，避免不同檔案互相覆蓋
+    const filePath = `${table}/${recordId}/${Date.now()}_${file.name}`;
+
+    const { error: uploadError } = await supabaseClient.storage
+      .from("attachments")
+      .upload(filePath, file);
+    if (uploadError) {
+      console.error("上傳附件失敗：", uploadError);
+      alert(`「${file.name}」上傳失敗，請稍後再試。`);
+      continue;
+    }
+
+    const { data: publicUrlData } = supabaseClient.storage
+      .from("attachments")
+      .getPublicUrl(filePath);
+
+    const { error: insertError } = await supabaseClient.from("attachments").insert({
+      source_table: table,
+      record_id: recordId,
+      file_name: file.name,
+      file_path: filePath,
+      file_url: publicUrlData.publicUrl,
+      content_type: file.type || null,
+    });
+    if (insertError) {
+      console.error("寫入附件資料失敗：", insertError);
+      alert(`「${file.name}」的附件資料寫入失敗，請稍後再試。`);
+    }
+  }
+
+  await fetchAllAttachments();
+  renderAttachmentModalList();
+  rerenderCurrentCategoryForTable(table); // 更新表格上的附件圖示（數量）
+}
+
+// 刪除一筆附件：先刪 Storage 裡的實際檔案，再刪 attachments 表裡的紀錄
+async function deleteAttachment(att) {
+  if (!(await confirmDelete("確定要刪除這個附件嗎？刪除後無法復原。"))) {
+    return;
+  }
+  if (!supabaseClient) {
+    return;
+  }
+  const { error: storageError } = await supabaseClient.storage
+    .from("attachments")
+    .remove([att.file_path]);
+  if (storageError) {
+    console.error("刪除附件檔案失敗：", storageError);
+  }
+  const { error: deleteError } = await supabaseClient
+    .from("attachments")
+    .delete()
+    .eq("id", att.id);
+  if (deleteError) {
+    console.error("刪除附件資料失敗：", deleteError);
+    alert("刪除附件失敗，請稍後再試。");
+    return;
+  }
+
+  await fetchAllAttachments();
+  renderAttachmentModalList();
+  rerenderCurrentCategoryForTable(att.source_table);
+}
+
+// 附件表格名稱 -> 分類名稱（跟 ATTACHMENT_TABLE_NAME 相反過來），用來知道要重畫哪一個表格
+function findCategoryForTable(table) {
+  return Object.keys(ATTACHMENT_TABLE_NAME).find((key) => ATTACHMENT_TABLE_NAME[key] === table);
+}
+
+// 附件有異動後，只需要重畫畫面（附件圖示的數量），不用重新從 Supabase 抓 allData
+function rerenderCurrentCategoryForTable(table) {
+  const category = findCategoryForTable(table);
+  if (!category) {
+    return;
+  }
+  if (category === "medical") {
+    renderMedicalList();
+  } else if (category === "shopping") {
+    renderShoppingList();
+  } else if (EXAM_CATEGORIES.includes(category)) {
+    renderExamList();
+  } else {
+    renderList(category);
+  }
+}
+
+// 設定附件視窗：選檔案就自動上傳、按「關閉」就關掉視窗
+function setupAttachmentModal() {
+  const fileInput = document.getElementById("attachment-file-input");
+  const closeBtn = document.getElementById("attachment-modal-close-btn");
+  const modal = document.getElementById("attachment-modal");
+
+  if (fileInput) {
+    fileInput.addEventListener("change", async () => {
+      if (fileInput.files && fileInput.files.length > 0) {
+        await uploadAttachmentFiles(Array.from(fileInput.files));
+        fileInput.value = "";
+      }
+    });
+  }
+  if (closeBtn) {
+    closeBtn.addEventListener("click", closeAttachmentModal);
+  }
+  if (modal) {
+    // 點視窗外面的灰色背景也可以關閉
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        closeAttachmentModal();
+      }
+    });
+  }
+}
+
 // 從 Supabase 讀取某個分類底下的資料（爸爸媽媽的都讀出來，依新增順序排序）
 // 病歷資料還是依照上方頭像切換的 currentPerson 過濾；
 // 長照申請進度、需要購買清單則有自己的「對象」下拉選單，所以這裡都先讀全部資料，
@@ -819,6 +1070,14 @@ function renderList(category) {
       actionTd.appendChild(delBtn);
     }
 
+    // 附件按鈕跟編輯／刪除放在同一欄，手機閱讀比較不會太擠；看診時間表、檢查排程不需要附件功能
+    if (category !== "visit") {
+      const attachmentBtn = createAttachmentButton(ATTACHMENT_TABLE_NAME[category], item.id);
+      if (attachmentBtn) {
+        actionTd.appendChild(attachmentBtn);
+      }
+    }
+
     tr.appendChild(actionTd);
     tbody.appendChild(tr);
   });
@@ -973,6 +1232,11 @@ function renderMedicalList() {
       });
       actionTd.appendChild(delBtn);
 
+      const attachmentBtn = createAttachmentButton("medical_records", item.id);
+      if (attachmentBtn) {
+        actionTd.appendChild(attachmentBtn);
+      }
+
       tr.appendChild(actionTd);
       tbody.appendChild(tr);
     });
@@ -1038,6 +1302,11 @@ function renderShoppingList() {
       await deleteCategoryItem("shopping", item); // 改成連線 Supabase 刪除
     });
     actionTd.appendChild(delBtn);
+
+    const attachmentBtn = createAttachmentButton("shopping_items", item.id);
+    if (attachmentBtn) {
+      actionTd.appendChild(attachmentBtn);
+    }
 
     tr.appendChild(actionTd);
     tbody.appendChild(tr);
@@ -1171,6 +1440,11 @@ function startEdit(category, index, tr) {
   });
   actionTd.appendChild(cancelBtn);
 
+  const attachmentBtn = createAttachmentButton(ATTACHMENT_TABLE_NAME[category], item.id);
+  if (attachmentBtn) {
+    actionTd.appendChild(attachmentBtn);
+  }
+
   tr.appendChild(actionTd);
 }
 
@@ -1287,7 +1561,7 @@ function renderExamList() {
 
     tr.appendChild(createDisplayCell(getExamLocationValue(category, item)));
 
-    // 檢查排程的資料都是從醫院系統匯入的，不開放編輯／刪除，所以沒有操作欄位
+    // 檢查排程的資料都是從醫院系統匯入的，不開放編輯／刪除，也不需要附件功能
     tbody.appendChild(tr);
   });
 }
@@ -1979,6 +2253,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupVisitSearch(); // 設定看診記錄的日期搜尋功能
   setupCameraFeature(); // 設定「拍照新增」功能（檢查排程、看診時間表）
   setupAiSummaryToggle(); // 設定「AI 整理摘要」區塊的展開／收合功能
+  setupAttachmentModal(); // 設定附件上傳視窗
   setupTabPersonFilters(); // 設定看診時間表／長照申請進度／購物墊款清單的「對象」下拉選單
   setupKeywordSearchInputs(); // 設定每個頁簽搜尋列的「關鍵字」搜尋欄位
   applyPersonDefaultToTabFilters(); // 一開始預設看「爸爸」的資料，下拉選單順序也對應調整
@@ -1995,6 +2270,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   // 全部都改成連線 Supabase，需要一點時間讀取，讀取完再畫出來
   if (supabaseClient) {
     setVisitSyncStatus("資料讀取中…");
+    await fetchAllAttachments(); // 先把附件資料抓回來，等一下每個表格畫出來時才能正確顯示附件圖示
     await Promise.all([refreshVisitList(), refreshAllSupabaseCategories(), refreshAiSummary()]);
     setVisitSyncStatus("✅ 已連線 Supabase（test0920 專案）");
   } else {

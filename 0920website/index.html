@@ -387,6 +387,20 @@
     </div>
   </div>
 
+  <!-- 附件上傳視窗：點任何一列的「📎」按鈕都會跳出這個視窗，
+       可以一次選多個檔案上傳，也可以看目前已經上傳的附件、點縮圖/檔名開啟，或刪除附件 -->
+  <div id="attachment-modal" class="modal-overlay" style="display:none;">
+    <div class="modal-box attachment-modal-box">
+      <h3>📎 附件</h3>
+      <input type="file" id="attachment-file-input" multiple />
+      <p class="attachment-hint">可以一次選擇多個檔案上傳（例如報告照片、掃描檔）</p>
+      <div id="attachment-list" class="attachment-list"></div>
+      <div class="modal-actions">
+        <button type="button" id="attachment-modal-close-btn">關閉</button>
+      </div>
+    </div>
+  </div>
+
   <footer>
     <p>點上方照片可以切換「爸爸」「媽媽」，各自的資料分開存放、互不影響。<br />所有分頁（病歷資料、檢查排程、看診時間表、照顧記錄、長照申請進度、購物/墊款清單）都已連線 Supabase 資料庫，不管用哪一台電腦或手機打開，看到的都是同一份最新資料，但需要能連上網路。</p>
     <p class="sync-status" id="visit-sync-status"></p>

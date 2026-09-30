@@ -633,6 +633,91 @@ footer {
   font-size: 14px;
 }
 
+/* ===== 附件上傳功能 ===== */
+
+/* 「附件」按鈕跟「編輯」「刪除」放在同一欄，維持一樣的排列方式（手機閱讀比較不會太擠）：
+   沒有附件時是淺灰色迴紋針，有附件時變成橘色並顯示數量 */
+.attachment-btn {
+  display: block;
+  width: 56px;
+  margin: 0 auto 6px auto;
+  border: none;
+  background-color: #f1f2f6;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: #636e72;
+}
+
+.attachment-btn:last-child {
+  margin-bottom: 0;
+}
+
+.attachment-btn:hover {
+  background-color: #dfe4ea;
+}
+
+.attachment-btn--has-files {
+  background-color: #ffeaa7;
+  color: #e17055;
+  font-weight: bold;
+}
+
+.attachment-count {
+  font-size: 13px;
+  vertical-align: super;
+}
+
+.attachment-modal-box {
+  text-align: left;
+}
+
+#attachment-file-input {
+  width: 100%;
+}
+
+.attachment-hint {
+  font-size: 13px;
+  color: #636e72;
+  margin: 6px 0 12px;
+}
+
+.attachment-list {
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.attachment-empty {
+  color: #b2bec3;
+  font-size: 14px;
+}
+
+.attachment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f2f6;
+}
+
+.attachment-item a {
+  color: #0984e3;
+  word-break: break-all;
+}
+
+.attachment-delete-btn {
+  flex-shrink: 0;
+  border: none;
+  background-color: #ff7675;
+  color: white;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
 #camera-capture-btn,
 #camera-album-btn,
 #duplicate-modal-close-btn {
@@ -740,7 +825,8 @@ footer {
   }
 
   .edit-btn,
-  .delete-btn {
+  .delete-btn,
+  .attachment-btn {
     width: 44px;
     font-size: 11px;
     padding: 4px 2px;
