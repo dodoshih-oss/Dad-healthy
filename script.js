@@ -2352,6 +2352,13 @@ function setupCameraFeature() {
 // ---------------------------------------
 
 document.addEventListener("DOMContentLoaded", async () => {
+  // 如果網址是「...#privacy」，只顯示隱私權政策內容，不用登入、也不連線資料庫
+  // （這是給 Google 帳號登入審核用的公開說明頁）
+  if (window.location.hash === "#privacy") {
+    document.getElementById("privacy-page").style.display = "flex";
+    return;
+  }
+
   setupAuthButtons(); // 設定登入畫面的登入按鈕、右上角的登出按鈕
 
   // 先檢查有沒有登入、是不是允許名單裡的帳號，沒過就停在登入畫面，不會載入任何資料
