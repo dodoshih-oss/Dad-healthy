@@ -33,6 +33,105 @@ function setVisitSyncStatus(text) {
 }
 
 // ---------------------------------------
+// 登入保護：只有用允許名單裡的 Google 帳號登入，才看得到、動得了任何資料
+// （資料庫那邊也有設定一樣的規則，這裡是讓畫面上有登入畫面可以操作，
+// 就算有人想跳過畫面直接呼叫資料庫，資料庫規則還是會擋下來）
+// ---------------------------------------
+
+// 顯示登入畫面，把主要內容都蓋住
+function showLoginScreen(errorMessage) {
+  const loginScreen = document.getElementById("login-screen");
+  const errorEl = document.getElementById("login-error");
+  if (loginScreen) {
+    loginScreen.style.display = "flex";
+  }
+  if (errorEl) {
+    if (errorMessage) {
+      errorEl.textContent = errorMessage;
+      errorEl.style.display = "block";
+    } else {
+      errorEl.style.display = "none";
+    }
+  }
+}
+
+// 登入成功，把登入畫面收起來，顯示目前登入的帳號
+function hideLoginScreen(userEmail) {
+  const loginScreen = document.getElementById("login-screen");
+  const userBar = document.getElementById("user-bar");
+  const emailLabel = document.getElementById("user-email-label");
+  if (loginScreen) {
+    loginScreen.style.display = "none";
+  }
+  if (userBar) {
+    userBar.style.display = "flex";
+  }
+  if (emailLabel) {
+    emailLabel.textContent = `已登入：${userEmail}`;
+  }
+}
+
+// 設定登入畫面的「使用 Google 帳號登入」按鈕、右上角的「登出」按鈕
+function setupAuthButtons() {
+  const loginBtn = document.getElementById("google-login-btn");
+  const logoutBtn = document.getElementById("logout-btn");
+
+  if (loginBtn) {
+    loginBtn.addEventListener("click", async () => {
+      if (!supabaseClient) {
+        return;
+      }
+      await supabaseClient.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.href },
+      });
+    });
+  }
+
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", async () => {
+      if (!supabaseClient) {
+        return;
+      }
+      await supabaseClient.auth.signOut();
+      window.location.reload();
+    });
+  }
+}
+
+// 檢查目前是否已經登入、而且是允許名單裡的帳號
+// 回傳 true 表示可以繼續往下載入網站內容；回傳 false 表示要停在登入畫面
+async function checkAuthAndShowScreen() {
+  if (!supabaseClient) {
+    return false;
+  }
+
+  const { data } = await supabaseClient.auth.getSession();
+  const session = data && data.session;
+
+  if (!session) {
+    showLoginScreen();
+    return false;
+  }
+
+  // 有登入，但還要確認這個帳號有沒有在允許名單裡（真正的把關還是在資料庫規則，
+  // 這裡只是先讓畫面顯示正確的提示訊息，體驗比較好）
+  const { data: allowedRows, error } = await supabaseClient
+    .from("allowed_users")
+    .select("email")
+    .eq("email", session.user.email);
+
+  if (error || !allowedRows || allowedRows.length === 0) {
+    showLoginScreen(`這個帳號（${session.user.email}）沒有被授權使用這個網站，請改用其他帳號登入，或聯絡管理者新增權限。`);
+    await supabaseClient.auth.signOut();
+    return false;
+  }
+
+  hideLoginScreen(session.user.email);
+  return true;
+}
+
+// ---------------------------------------
 // 資料格式轉換：網頁上用的欄位名稱 <-> Supabase 資料表的欄位名稱
 // ---------------------------------------
 
@@ -198,13 +297,13 @@ function createAttachmentButton(table, recordId) {
 }
 
 // 打開附件視窗，顯示這一筆資料目前的附件、可以繼續上傳新的
-function openAttachmentModal(table, recordId) {
+async function openAttachmentModal(table, recordId) {
   currentAttachmentContext = { table, recordId };
   const modal = document.getElementById("attachment-modal");
   if (!modal) {
     return;
   }
-  renderAttachmentModalList();
+  await renderAttachmentModalList();
   modal.style.display = "flex";
 }
 
@@ -221,7 +320,8 @@ function closeAttachmentModal() {
 }
 
 // 把目前這筆資料已上傳的附件畫出來（檔名可以點擊開啟，旁邊有刪除按鈕）
-function renderAttachmentModalList() {
+// 附件檔案現在是「不公開」的，所以每次打開都要跟 Supabase 要一個有時效的專屬連結（簽名網址）才能看得到
+async function renderAttachmentModalList() {
   const listEl = document.getElementById("attachment-list");
   if (!listEl || !currentAttachmentContext) {
     return;
@@ -238,12 +338,20 @@ function renderAttachmentModalList() {
     return;
   }
 
-  list.forEach((att) => {
+  // 一次幫每個附件都要一個簽名網址（有效期 1 小時，夠瀏覽/下載用）
+  const signedUrls = await Promise.all(
+    list.map((att) =>
+      supabaseClient.storage.from("attachments").createSignedUrl(att.file_path, 3600)
+    )
+  );
+
+  list.forEach((att, i) => {
     const row = document.createElement("div");
     row.className = "attachment-item";
 
     const link = document.createElement("a");
-    link.href = att.file_url;
+    const signedData = signedUrls[i] && signedUrls[i].data;
+    link.href = signedData ? signedData.signedUrl : "#";
     link.target = "_blank";
     link.rel = "noopener noreferrer";
     link.textContent = att.file_name;
@@ -285,16 +393,14 @@ async function uploadAttachmentFiles(fileList) {
       continue;
     }
 
-    const { data: publicUrlData } = supabaseClient.storage
-      .from("attachments")
-      .getPublicUrl(filePath);
-
+    // 附件現在是「不公開」的，看的時候才會另外要簽名網址，
+    // 這裡的 file_url 欄位只是先存個佔位用的值（資料庫規定不能是空的），實際不會拿來用
     const { error: insertError } = await supabaseClient.from("attachments").insert({
       source_table: table,
       record_id: recordId,
       file_name: file.name,
       file_path: filePath,
-      file_url: publicUrlData.publicUrl,
+      file_url: filePath,
       content_type: file.type || null,
     });
     if (insertError) {
@@ -2246,6 +2352,38 @@ function setupCameraFeature() {
 // ---------------------------------------
 
 document.addEventListener("DOMContentLoaded", async () => {
+  setupAuthButtons(); // 設定登入畫面的登入按鈕、右上角的登出按鈕
+
+  // 先檢查有沒有登入、是不是允許名單裡的帳號，沒過就停在登入畫面，不會載入任何資料
+  const isAuthorized = await checkAuthAndShowScreen();
+
+  // 登入狀態改變時（登入成功、登出、或 Google 登入完成導回網站時）都重新檢查一次
+  if (supabaseClient) {
+    supabaseClient.auth.onAuthStateChange(async (_event, _session) => {
+      const nowAuthorized = await checkAuthAndShowScreen();
+      if (nowAuthorized) {
+        await loadWebsiteContent();
+      }
+    });
+  }
+
+  if (!isAuthorized) {
+    return; // 沒登入或帳號不在名單內，畫面停在登入畫面，不繼續往下載入任何資料
+  }
+
+  await loadWebsiteContent();
+});
+
+// 避免登入狀態變化事件（INITIAL_SESSION、SIGNED_IN 等）重複觸發，網站內容只準備一次
+let websiteContentLoaded = false;
+
+// 登入通過後才會執行：把網站原本的畫面、資料都準備好
+async function loadWebsiteContent() {
+  if (websiteContentLoaded) {
+    return;
+  }
+  websiteContentLoaded = true;
+
   setupTabs();
   setupPersonSwitcher(); // 設定爸爸／媽媽的人物切換
   setupExamFilters(); // 設定「檢查排程」的篩選區（單據類別、顯示範圍）
@@ -2281,4 +2419,4 @@ document.addEventListener("DOMContentLoaded", async () => {
   } else {
     setVisitSyncStatus("⚠️ Supabase 函式庫載入失敗，網站的資料暫時無法讀取，請確認網路連線後重新整理頁面。");
   }
-});
+}
