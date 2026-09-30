@@ -268,8 +268,13 @@ async function uploadAttachmentFiles(fileList) {
   const { table, recordId } = currentAttachmentContext;
 
   for (const file of fileList) {
-    // 檔案路徑：資料表/這筆資料id/時間戳記_檔名，避免不同檔案互相覆蓋
-    const filePath = `${table}/${recordId}/${Date.now()}_${file.name}`;
+    // Supabase Storage 的檔案路徑如果直接用中文檔名，常常會上傳失敗，
+    // 所以路徑一律用英數字（時間戳記+亂數+副檔名），原始中文檔名另外存在 file_name 欄位，
+    // 畫面上顯示、下載時看到的還是原本的中文檔名，不影響使用
+    const dotIndex = file.name.lastIndexOf(".");
+    const fileExt = dotIndex >= 0 ? file.name.slice(dotIndex) : "";
+    const safeFileName = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}${fileExt}`;
+    const filePath = `${table}/${recordId}/${safeFileName}`;
 
     const { error: uploadError } = await supabaseClient.storage
       .from("attachments")
