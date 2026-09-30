@@ -8,8 +8,25 @@
 </head>
 <body>
 
+  <!-- 登入畫面：還沒登入（或不是允許名單內的帳號）時，整個畫面會被這一層蓋住，
+       看不到也碰不到底下任何一筆資料，一定要用允許的 Google 帳號登入才會消失 -->
+  <div id="login-screen" class="login-screen">
+    <div class="login-box">
+      <h1>🔒 爸媽的照顧網站</h1>
+      <p>這個網站只開放給指定的家人／照顧者使用，請用您的 Google 帳號登入。</p>
+      <button type="button" id="google-login-btn" class="google-login-btn">使用 Google 帳號登入</button>
+      <p id="login-error" class="login-error" style="display:none;"></p>
+    </div>
+  </div>
+
   <header>
     <h1>爸媽的照顧網站</h1>
+
+    <!-- 登入後顯示目前登入的帳號跟登出按鈕 -->
+    <div class="user-bar" id="user-bar" style="display:none;">
+      <span id="user-email-label"></span>
+      <button type="button" id="logout-btn">登出</button>
+    </div>
 
     <!-- 人物切換：點擊照片切換要看爸爸還是媽媽的資料 -->
     <div class="person-switcher">
