@@ -33,12 +33,15 @@
   </div>
 
   <header>
-    <h1>爸媽的照顧網站</h1>
+    <!-- 標題跟「登入帳號 + 登出按鈕」放同一列：標題靠左、user-bar 靠右 -->
+    <div class="header-top-row">
+      <h1>爸媽的照顧網站</h1>
 
-    <!-- 登入後顯示目前登入的帳號跟登出按鈕 -->
-    <div class="user-bar" id="user-bar" style="display:none;">
-      <span id="user-email-label"></span>
-      <button type="button" id="logout-btn">登出</button>
+      <!-- 登入後顯示目前登入的帳號跟登出按鈕 -->
+      <div class="user-bar" id="user-bar" style="display:none;">
+        <span id="user-email-label"></span>
+        <button type="button" id="logout-btn">登出</button>
+      </div>
     </div>
 
     <!-- 人物切換：點擊照片切換要看爸爸還是媽媽的資料 -->
@@ -52,8 +55,6 @@
         <span>媽媽</span>
       </button>
     </div>
-
-    <p class="sub">記錄病歷、檢查排程、看診時間表、照顧、長照申請進度與購物/墊款清單</p>
   </header>
 
   <!-- 分頁按鈕：點擊切換不同區塊 -->
