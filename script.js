@@ -729,7 +729,7 @@ const CONFIG = {
       {
         key: "item",
         type: "select",
-        options: ["輔具", "長照服務", "診療費", "醫療物資"],
+        options: ["輔具", "長照服務", "診療費", "醫療物資", "食物", "其他"],
       },
       { key: "amount", type: "number" },
       { key: "payer", type: "select", options: ["甄", "瑤", "慈", "書", "沛"] },
