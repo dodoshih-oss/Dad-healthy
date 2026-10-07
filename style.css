@@ -67,13 +67,16 @@ header {
 }
 
 header h1 {
-  margin: 0 0 6px 0;
+  margin: 0;
 }
 
-header .sub {
-  margin: 0;
-  font-size: 14px;
-  opacity: 0.9;
+/* 標題跟登出按鈕（user-bar）同一列：標題靠左、user-bar 靠右 */
+.header-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 /* 看診記錄跟 Supabase 連線狀態的小提示文字 */
@@ -690,15 +693,15 @@ footer {
   margin-top: 14px;
 }
 
-/* 登入後右上角顯示的帳號跟登出按鈕 */
+/* 登入後右上角顯示的帳號跟登出按鈕（跟標題同一列，靠右對齊） */
 .user-bar {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 10px;
   font-size: 13px;
-  color: #636e72;
-  margin-bottom: 8px;
+  color: rgba(255, 255, 255, 0.9);
+  flex-shrink: 0;
 }
 
 .user-bar button {
@@ -841,6 +844,16 @@ footer {
 
   header h1 {
     font-size: 20px;
+  }
+
+  /* 螢幕太窄時，標題跟登出按鈕允許換行，避免擠爆 */
+  .header-top-row {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+
+  .user-bar {
+    font-size: 12px;
   }
 
   .avatar {
@@ -1154,4 +1167,52 @@ footer {
 .privacy-box .privacy-updated {
   color: #888;
   font-size: 0.9em;
+}
+
+/* ===== 已代墊款項：各代墊款人總計（整排顯示） ===== */
+.advance-totals {
+  display: flex;
+  flex-wrap: wrap; /* 螢幕太窄時自動換行 */
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.advance-total-box {
+  flex: 1 1 90px; /* 每格至少 90px 寬，空間夠就平均分配成同一排 */
+  background-color: #fff;
+  border: 1px solid #e0c9c9;
+  border-radius: 8px;
+  padding: 8px 6px;
+  text-align: center;
+}
+
+.advance-total-name {
+  display: block;
+  font-size: 13px;
+  color: #636e72;
+  margin-bottom: 2px;
+}
+
+.advance-total-amount {
+  display: block;
+  font-size: 16px;
+  font-weight: bold;
+  color: #8e3b3b;
+}
+
+/* 最後一格「合計」用不同底色突顯 */
+.advance-total-box--sum {
+  background-color: #fff3e0;
+  border-color: #e17055;
+}
+
+/* 手機：每一排放三格（五位 + 合計 = 六格，剛好兩排） */
+@media (max-width: 600px) {
+  .advance-total-box {
+    flex: 1 1 28%;
+  }
+
+  .advance-total-amount {
+    font-size: 14px;
+  }
 }

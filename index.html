@@ -349,6 +349,10 @@
           <textarea name="note" placeholder="備註（按 Enter 可換行）" rows="2"></textarea>
           <button type="submit">新增紀錄</button>
         </form>
+        <!-- 各代墊款人的代墊金額總計：整排列出五位姊妹各自代墊了多少錢，
+             數字由 script.js 的 renderAdvanceTotals 依照目前畫面篩選條件自動計算 -->
+        <div class="advance-totals" id="advance-totals"></div>
+
         <table class="advance-table">
           <thead><tr><th>對象</th><th id="advance-date-header" class="date-sort-header">日期</th><th>項目</th><th>金額</th><th>代墊款人</th><th>備註</th><th></th></tr></thead>
           <tbody id="advance-list"></tbody>

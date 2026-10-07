@@ -1192,6 +1192,75 @@ function renderList(category) {
     tr.appendChild(actionTd);
     tbody.appendChild(tr);
   });
+
+  // 已代墊款項：每次重畫表格後，同步更新上方「各代墊款人總計」那一排
+  if (category === "advance") {
+    renderAdvanceTotals(rows.map((row) => row.item));
+  }
+}
+
+// 已代墊款項：算出每位代墊款人（甄、瑤、慈、書、沛）目前代墊的金額總計，整排顯示在表格上方
+// items：目前畫面上看得到的那些代墊款紀錄（已經套用「對象」下拉選單、關鍵字的篩選），
+// 這樣上方的總計會跟下面表格顯示的資料一致
+function renderAdvanceTotals(items) {
+  const container = document.getElementById("advance-totals");
+  if (!container) {
+    return;
+  }
+  container.innerHTML = ""; // 先清空
+
+  // 代墊款人的名單直接沿用 CONFIG 裡設定的選項，之後新增人也會自動跟著出現
+  const payerField = CONFIG.advance.fields.find((field) => field.key === "payer");
+  const payers = payerField ? payerField.options : [];
+
+  // 每個人先從 0 元開始累加
+  const totals = {};
+  payers.forEach((payer) => {
+    totals[payer] = 0;
+  });
+
+  let grandTotal = 0;
+  items.forEach((item) => {
+    const amount = Number(item.amount) || 0; // 金額欄位如果是空的或不是數字，就當作 0
+    if (totals[item.payer] !== undefined) {
+      totals[item.payer] += amount;
+    }
+    grandTotal += amount;
+  });
+
+  // 每個人做一個小方塊：名字 + 金額（加上千分位逗號，例如 12,300）
+  payers.forEach((payer) => {
+    const box = document.createElement("div");
+    box.className = "advance-total-box";
+
+    const nameEl = document.createElement("span");
+    nameEl.className = "advance-total-name";
+    nameEl.textContent = payer;
+
+    const amountEl = document.createElement("span");
+    amountEl.className = "advance-total-amount";
+    amountEl.textContent = "$" + totals[payer].toLocaleString("en-US");
+
+    box.appendChild(nameEl);
+    box.appendChild(amountEl);
+    container.appendChild(box);
+  });
+
+  // 最後一格放全部加總
+  const totalBox = document.createElement("div");
+  totalBox.className = "advance-total-box advance-total-box--sum";
+
+  const totalName = document.createElement("span");
+  totalName.className = "advance-total-name";
+  totalName.textContent = "合計";
+
+  const totalAmount = document.createElement("span");
+  totalAmount.className = "advance-total-amount";
+  totalAmount.textContent = "$" + grandTotal.toLocaleString("en-US");
+
+  totalBox.appendChild(totalName);
+  totalBox.appendChild(totalAmount);
+  container.appendChild(totalBox);
 }
 
 // AI 整理摘要：不是網頁即時呼叫 AI（那樣要把金鑰放在網頁裡，會被任何人看到），
