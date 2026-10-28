@@ -592,6 +592,7 @@ const MEDICAL_CATEGORY_OPTIONS = [
   "內分泌科",
   "耳鼻喉科",
   "脊椎骨科",
+  "肝膽腸胃科",
   "其他",
 ];
 
@@ -619,6 +620,9 @@ function inferMedicalCategory(item) {
   }
   if (text.includes("聽力") || text.includes("耳鼻喉")) {
     return "耳鼻喉科";
+  }
+  if (text.includes("腸胃") || text.includes("大腸") || text.includes("肝") || text.includes("膽")) {
+    return "肝膽腸胃科";
   }
   return "其他";
 }
